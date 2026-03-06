@@ -13,9 +13,9 @@
       --text:#dde6f0;--text-dim:#7a9ab5;--text-muted:#9ab0c4;
       --font:'Courier New','Consolas',monospace;
     }
-    html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.6}
+    html{height:100%}body{min-height:100%;display:flex;flex-direction:column;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.6}
     ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--blue-dim);border-radius:3px}
-    #app{max-width:980px;margin:0 auto;padding:28px 18px;min-height:100vh}
+    #app{max-width:980px;margin:0 auto;padding:28px 18px;flex:1;width:100%}
     header{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:26px}
     .hdr-row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
     .hdr-title{font-size:17px;font-weight:bold;color:var(--blue);letter-spacing:2px}
@@ -76,6 +76,9 @@
     .tbl-inp{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-family:var(--font);font-size:12px;padding:2px 4px;width:100%;outline:none}
     .tbl-inp:focus{border-bottom-color:var(--blue)}
     .add-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}.add-row input{flex:1;min-width:160px}
+  
+    footer{background:var(--bg2);border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:1px;padding:14px 18px;width:100%;flex-shrink:0}
+    @media(min-width:768px){body{font-size:15px}.hdr-title{font-size:19px}.hdr-sub,.hdr-meta,.hdr-tagline{font-size:13px}.stitle{font-size:13px}.menu-label{font-size:15px}.menu-key{font-size:16px}.menu-badge{font-size:12px}.btn{font-size:14px;padding:9px 20px}.btn.sm{font-size:12px;padding:4px 11px}.btn-back{font-size:13px}input[type=text],.iprefix,select{font-size:15px}.tbl{font-size:13px}.tbl th{font-size:12px}.msg{font-size:14px}.pick-item{font-size:13px}.dt-item{font-size:13px}.aula-card-title{font-size:14px}.aula-card-meta{font-size:13px}.loading{font-size:14px}footer{font-size:12px}}
   </style>
 </head>
 <body>
@@ -836,7 +839,7 @@ async function emailCustom(){
 init();
 </script>
 
-<footer style="margin-top:40px;padding:20px 0 10px;border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:1px">
+<footer>
   &copy; <span id="footer-year"></span> Joshua Azze &amp; IBtech &mdash; Todos os direitos reservados.
 </footer>
 <script>document.getElementById("footer-year").textContent=new Date().getFullYear();</script>

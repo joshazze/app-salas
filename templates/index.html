@@ -337,7 +337,18 @@
 
     <div style="border:1px solid var(--border);padding:14px;background:var(--bg2)">
       <p style="color:var(--cyan);font-size:12px;margin-bottom:10px">// mensagem personalizada</p>
-      <div id="adm-alunos-pick" style="margin-bottom:10px"><div class="loading">carregando alunos...</div></div>
+      <div style="margin-bottom:10px">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+    <div class="igroup" style="flex:1;margin:0">
+      <span class="iprefix">&#128269;</span>
+      <input type="text" id="pick-search" placeholder="filtrar por usuario ou email..." oninput="filtrarPick()" autocomplete="off" />
+    </div>
+    <button class="btn sm" onclick="selecionarVisiveis()" style="white-space:nowrap">sel. todos</button>
+    <button class="btn sm danger" onclick="limparSelecao()" style="white-space:nowrap">limpar</button>
+  </div>
+  <div id="pick-counter" style="font-size:11px;color:var(--text-muted);margin-bottom:6px">0 selecionado(s)</div>
+  <div id="adm-alunos-pick" style="max-height:220px;overflow-y:auto;border:1px solid var(--border);padding:6px;background:var(--bg)"><div class="loading">carregando alunos...</div></div>
+</div>
       <div class="igroup" style="margin-bottom:8px">
         <span class="iprefix">assunto</span>
         <input type="text" id="email-assunto" placeholder="assunto do email"/>
@@ -747,27 +758,55 @@ async function alunoExcluir(id){
 
 // email
 let admAlunosSel=new Set();
+let _pickAlunos=[];
 async function loadAdmAlunosPick(){
   const el=document.getElementById('adm-alunos-pick');
   const d=await api('/api/adm/alunos',admCreds());
   if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhum aluno cadastrado.</div>';return;}
   admAlunosSel=new Set();
-  let h='<p style="color:var(--text-muted);font-size:11px;margin-bottom:6px">selecione os destinatarios:</p>';
-  h+='<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
-  d.registros.forEach(r=>{
-    if(!r.email)return;
-    h+=`<label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;border:1px solid var(--border);padding:4px 8px;background:var(--bg3)">
-      <input type="checkbox" onchange="admToggleSel('${r.email}','${r.username}',this.checked)" style="accent-color:var(--blue)"/>
-      <span style="color:var(--text)">${r.username}</span>
-      <span style="color:var(--text-dim)">&lt;${r.email}&gt;</span>
-    </label>`;
-  });
-  h+='</div>';
-  el.innerHTML=h;
+  _pickAlunos=d.registros.filter(r=>r.email);
+  document.getElementById('pick-search').value='';
+  renderPick(_pickAlunos);
 }
-function admToggleSel(email,username,checked){
-  if(checked)admAlunosSel.add({email,username});
-  else admAlunosSel.forEach(x=>{if(x.email===email)admAlunosSel.delete(x);});
+function renderPick(lista){
+  const el=document.getElementById('adm-alunos-pick');
+  if(!lista.length){el.innerHTML='<div class="msg warn" style="padding:8px">nenhum resultado.</div>';return;}
+  el.innerHTML=lista.map(r=>`
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:5px 8px;border-bottom:1px solid var(--border);background:${admAlunosSel.has(r.email)?'var(--bg3)':'transparent'};transition:background .1s">
+      <input type="checkbox" data-email="${r.email}" data-username="${encodeURIComponent(r.username)}" onchange="admToggleSel(this)" ${admAlunosSel.has(r.email)?'checked':''} style="accent-color:var(--blue)"/>
+      <span style="color:var(--text);min-width:90px">${r.username}</span>
+      <span style="color:var(--text-muted)">${r.email}</span>
+    </label>`).join('');
+  atualizarContador();
+}
+function filtrarPick(){
+  const q=document.getElementById('pick-search').value.toLowerCase().trim();
+  const lista=q?_pickAlunos.filter(r=>r.username.toLowerCase().includes(q)||r.email.toLowerCase().includes(q)):_pickAlunos;
+  renderPick(lista);
+}
+function admToggleSel(cb){
+  const email=cb.dataset.email;
+  if(cb.checked)admAlunosSel.add(email);
+  else admAlunosSel.delete(email);
+  cb.closest('label').style.background=cb.checked?'var(--bg3)':'transparent';
+  atualizarContador();
+}
+function selecionarVisiveis(){
+  document.querySelectorAll('#adm-alunos-pick input[type=checkbox]').forEach(cb=>{
+    cb.checked=true;admAlunosSel.add(cb.dataset.email);
+    cb.closest('label').style.background='var(--bg3)';
+  });
+  atualizarContador();
+}
+function limparSelecao(){
+  admAlunosSel.clear();
+  document.querySelectorAll('#adm-alunos-pick input[type=checkbox]').forEach(cb=>{
+    cb.checked=false;cb.closest('label').style.background='transparent';
+  });
+  atualizarContador();
+}
+function atualizarContador(){
+  document.getElementById('pick-counter').textContent=`${admAlunosSel.size} selecionado(s)`;
 }
 async function emailTodos(){
   const msg=document.getElementById('email-todos-msg');
@@ -786,7 +825,7 @@ async function emailCustom(){
   const assunto=document.getElementById('email-assunto').value.trim();
   const mensagem=document.getElementById('email-msg').value.trim();
   const msg=document.getElementById('email-custom-msg');
-  const destinatarios=[...admAlunosSel];
+  const destinatarios=[..._pickAlunos.filter(r=>admAlunosSel.has(r.email))];
   if(!assunto||!mensagem){msg.innerHTML='<div class="msg error">Assunto e mensagem obrigatorios.</div>';return;}
   if(!destinatarios.length){msg.innerHTML='<div class="msg error">Selecione ao menos um destinatario.</div>';return;}
   msg.innerHTML='<div class="loading">enviando...</div>';

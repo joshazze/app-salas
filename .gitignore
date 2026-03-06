@@ -1,0 +1,25 @@
+# Credenciais e tokens
+gmail_credentials.json
+gmail_token.json
+token.json
+credentials.json
+
+# Banco de dados
+alunos.db
+
+# Cache
+cache/
+__pycache__/
+*.pyc
+*.pyo
+
+# Ambiente virtual
+venv/
+
+# Sistema
+.env
+*.log
+site_lock.json
+settings.local.json
+gunicorn.ctl
+teste_email.py

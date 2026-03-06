@@ -296,34 +296,34 @@ def email_boas_vindas(username, email, materias):
             linhas_materias += f"<div style='color:#1e90ff;font-size:11px;letter-spacing:1px;margin:14px 0 6px;text-transform:uppercase'>{dia}</div>"
             for m in mats:
                 linhas_materias += f"""
-                <div style='border:1px solid #1a2a3a;padding:10px 14px;background:#0d1117;margin-bottom:6px'>
+                <div style='border:1px solid #253d54;padding:10px 14px;background:#0d1117;margin-bottom:6px'>
                   <div style='color:#00d4ff;font-size:13px'>{m["disciplina"]}</div>
-                  <div style='color:#4a5a6a;font-size:11px;margin-top:3px'>{m["turma"]} &middot; {m["professor"]}</div>
+                  <div style='color:#7a9ab5;font-size:11px;margin-top:3px'>{m["turma"]} &middot; {m["professor"]}</div>
                 </div>"""
         materias_html = f"""
-        <p style='color:#c9d1d9;font-size:13px;margin-bottom:12px'>Suas matérias cadastradas:</p>
+        <p style='color:#dde6f0;font-size:13px;margin-bottom:12px'>Suas matérias cadastradas:</p>
         {linhas_materias}"""
     else:
         materias_html = """
-        <div style='border:1px solid #1a2a3a;padding:14px;background:#0d1117;color:#ffc107;font-size:13px'>
+        <div style='border:1px solid #253d54;padding:14px;background:#0d1117;color:#ffc107;font-size:13px'>
           &#9888; Você ainda não adicionou nenhuma matéria.<br/>
-          <span style='color:#6e7a8a;font-size:12px'>Acesse o site e adicione suas disciplinas para receber notificações de sala.</span>
+          <span style='color:#9ab0c4;font-size:12px'>Acesse o site e adicione suas disciplinas para receber notificações de sala.</span>
         </div>"""
 
     corpo = f"""
-    <div style='background:#080c10;color:#c9d1d9;font-family:Courier New,monospace;padding:24px;max-width:600px'>
-      <div style='border-bottom:1px solid #1a2a3a;padding-bottom:12px;margin-bottom:20px'>
+    <div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>
+      <div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>
         <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>MAPA DE SALAS</span>
-        <span style='color:#4a5a6a'> // </span>
-        <span style='color:#6e7a8a;font-size:12px'>IBtech</span>
+        <span style='color:#7a9ab5'> // </span>
+        <span style='color:#9ab0c4;font-size:12px'>IBtech</span>
       </div>
       <p style='color:#00e676;font-size:14px;margin-bottom:16px'>&#10003; Cadastro realizado com sucesso!</p>
       <p style='font-size:13px;margin-bottom:6px'>Olá, <span style='color:#1e90ff'>{username}</span>.</p>
-      <p style='font-size:13px;color:#6e7a8a;margin-bottom:20px'>
+      <p style='font-size:13px;color:#9ab0c4;margin-bottom:20px'>
         Seu acesso ao Mapa de Salas IBtech está ativo. Use seu username para entrar no sistema.
       </p>
       {materias_html}
-      <div style='color:#4a5a6a;font-size:11px;margin-top:24px;border-top:1px solid #1a2a3a;padding-top:12px'>
+      <div style='color:#7a9ab5;font-size:11px;margin-top:24px;border-top:1px solid #253d54;padding-top:12px'>
         &copy; Joshua Azze &amp; IBtech &mdash; Todos os direitos reservados.
       </div>
     </div>"""
@@ -337,7 +337,7 @@ def _montar_email_aulas(username, dia, aulas):
     linhas = ""
     for a in aulas:
         if not a["salas"]:
-            sala_txt = "<tr><td colspan='3' style='color:#888;font-size:12px'>sala nao encontrada</td></tr>"
+            sala_txt = "<tr><td colspan='3' style='color:#a0b4c4;font-size:12px'>sala nao encontrada</td></tr>"
         else:
             sala_txt = ""
             for s in a["salas"]:
@@ -348,19 +348,19 @@ def _montar_email_aulas(username, dia, aulas):
                     f"<tr>"
                     f"<td style='color:#ffc107'>{sala}</td>"
                     f"<td style='color:#00d4ff'>{hora}</td>"
-                    f"<td style='color:#aaa'>{data}</td>"
+                    f"<td style='color:#c8d4e0'>{data}</td>"
                     f"</tr>"
                 )
 
         linhas += f"""
-        <div style='margin-bottom:20px;border:1px solid #1a2a3a;padding:14px;background:#0d1117'>
+        <div style='margin-bottom:20px;border:1px solid #253d54;padding:14px;background:#0d1117'>
           <div style='color:#00d4ff;font-size:14px;margin-bottom:4px'>{a['disciplina']}</div>
-          <div style='color:#4a5a6a;font-size:12px;margin-bottom:10px'>{a['turma']} &middot; {a['professor']}</div>
+          <div style='color:#7a9ab5;font-size:12px;margin-bottom:10px'>{a['turma']} &middot; {a['professor']}</div>
           <table style='width:100%;border-collapse:collapse;font-size:12px'>
             <thead><tr>
-              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #1a2a3a'>Sala</th>
-              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #1a2a3a'>Horario</th>
-              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #1a2a3a'>Data</th>
+              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #253d54'>Sala</th>
+              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #253d54'>Horario</th>
+              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #253d54'>Data</th>
             </tr></thead>
             <tbody>{sala_txt}</tbody>
           </table>
@@ -368,16 +368,16 @@ def _montar_email_aulas(username, dia, aulas):
 
     assunto = f"[IBtech] Suas aulas de {dia} — {HOJE}"
     corpo   = f"""
-    <div style='background:#080c10;color:#c9d1d9;font-family:Courier New,monospace;padding:24px;max-width:600px'>
-      <div style='border-bottom:1px solid #1a2a3a;padding-bottom:12px;margin-bottom:20px'>
+    <div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>
+      <div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>
         <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>MAPA DE SALAS</span>
-        <span style='color:#4a5a6a'> // </span>
-        <span style='color:#6e7a8a;font-size:12px'>IBtech</span>
-        <div style='color:#4a5a6a;font-size:12px;margin-top:4px'>{dia} &middot; {HOJE}</div>
+        <span style='color:#7a9ab5'> // </span>
+        <span style='color:#9ab0c4;font-size:12px'>IBtech</span>
+        <div style='color:#7a9ab5;font-size:12px;margin-top:4px'>{dia} &middot; {HOJE}</div>
       </div>
-      <div style='color:#4a5a6a;font-size:12px;margin-bottom:16px'>// aulas de hoje para <span style='color:#1e90ff'>@{username}</span></div>
+      <div style='color:#7a9ab5;font-size:12px;margin-bottom:16px'>// aulas de hoje para <span style='color:#1e90ff'>@{username}</span></div>
       {linhas}
-      <div style='color:#4a5a6a;font-size:11px;margin-top:20px;border-top:1px solid #1a2a3a;padding-top:12px'>
+      <div style='color:#7a9ab5;font-size:11px;margin-top:20px;border-top:1px solid #253d54;padding-top:12px'>
         Este email foi gerado automaticamente pelo sistema de salas IBtech.
       </div>
     </div>"""

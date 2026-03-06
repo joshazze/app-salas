@@ -285,7 +285,7 @@ def enviar_email(para, assunto, corpo_html):
 
 def email_boas_vindas(username, email, materias):
     """Envia email de boas-vindas após cadastro."""
-    assunto = f"[IBSALA] Bem-vindo, {username}!"
+    assunto = f"[IBSALA] Bem-vindo/a, {username}!"
 
     if materias:
         linhas_materias = ""

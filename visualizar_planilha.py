@@ -442,7 +442,7 @@ def notificar_todos(df, dia, janela_fim=None):
             enviar_email(email, assunto, corpo)
             print(f"[notificar] Email enviado: {username} <{email}>")
             enviados += 1
-            time.sleep(2)  # pausa para não sobrecarregar a VM
+            time.sleep(3)  # pausa para não sobrecarregar a VM
         except Exception as e:
             print(f"[notificar] Erro ao enviar para {email}: {e}")
             erros += 1

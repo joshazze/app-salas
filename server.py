@@ -442,18 +442,32 @@ def adm_email_teste():
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
 
-    aluno = vp.buscar_aluno("josh")
-    if not aluno:
-        return jsonify({"erro": "Usuario josh nao encontrado"}), 404
-    aluno_id, username, _ = aluno
-    row = vp.buscar_aluno_por_id(aluno_id)
-    if not row:
-        return jsonify({"erro": "Dados do usuario nao encontrados"}), 404
-    _, email = row
+    aluno_id_param = data.get("aluno_id")
+    if aluno_id_param:
+        row = vp.buscar_aluno_por_id(aluno_id_param)
+        if not row:
+            return jsonify({"erro": "Usuario nao encontrado"}), 404
+        username_row = vp.buscar_aluno_por_id(aluno_id_param)
+        _, email = username_row
+        # pega username
+        import sqlite3
+        with vp.get_db() as con:
+            r = con.execute("SELECT username FROM alunos WHERE id=?", (aluno_id_param,)).fetchone()
+        username = r[0] if r else "usuario"
+        aluno_id = aluno_id_param
+    else:
+        aluno = vp.buscar_aluno("josh")
+        if not aluno:
+            return jsonify({"erro": "Usuario josh nao encontrado"}), 404
+        aluno_id, username, _ = aluno
+        row = vp.buscar_aluno_por_id(aluno_id)
+        if not row:
+            return jsonify({"erro": "Dados do usuario nao encontrados"}), 404
+        _, email = row
 
     horarios = [
-        ("07:10", "07:30"), ("09:30", "09:50"),
-        ("13:10", "13:30"), ("15:30", "15:50"), ("17:20", "19:10")
+        ("07:10", "07:50"), ("09:30", "10:10"),
+        ("13:10", "13:50"), ("15:30", "16:10"), ("17:20", "23:00")
     ]
 
     blocos_horario = ""

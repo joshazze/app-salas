@@ -285,7 +285,7 @@ def enviar_email(para, assunto, corpo_html):
 
 def email_boas_vindas(username, email, materias):
     """Envia email de boas-vindas após cadastro."""
-    assunto = f"[Mapa de Salas] Bem-vindo, {username}!"
+    assunto = f"[IBSALAS] Bem-vindo, {username}!"
 
     if materias:
         linhas_materias = ""
@@ -313,14 +313,14 @@ def email_boas_vindas(username, email, materias):
     corpo = f"""
     <div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>
       <div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>
-        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>MAPA DE SALAS</span>
+        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALAS</span>
         <span style='color:#7a9ab5'> // </span>
         <span style='color:#9ab0c4;font-size:12px'>IBtech</span>
       </div>
       <p style='color:#00e676;font-size:14px;margin-bottom:16px'>&#10003; Cadastro realizado com sucesso!</p>
       <p style='font-size:13px;margin-bottom:6px'>Olá, <span style='color:#1e90ff'>{username}</span>.</p>
       <p style='font-size:13px;color:#9ab0c4;margin-bottom:20px'>
-        Seu acesso ao Mapa de Salas IBtech está ativo. Use seu username para entrar no sistema.
+        Seu acesso ao IBSALAS está ativo. Use seu username para entrar no sistema.
       </p>
       {materias_html}
       <div style='color:#7a9ab5;font-size:11px;margin-top:24px;border-top:1px solid #253d54;padding-top:12px'>
@@ -370,7 +370,7 @@ def _montar_email_aulas(username, dia, aulas):
     corpo   = f"""
     <div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>
       <div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>
-        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>MAPA DE SALAS</span>
+        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALAS</span>
         <span style='color:#7a9ab5'> // </span>
         <span style='color:#9ab0c4;font-size:12px'>IBtech</span>
         <div style='color:#7a9ab5;font-size:12px;margin-top:4px'>{dia} &middot; {HOJE}</div>

@@ -355,7 +355,7 @@ def adm_email_custom():
     corpo = f"""
     <div style='background:#080c10;color:#c9d1d9;font-family:Courier New,monospace;padding:24px;max-width:600px'>
       <div style='border-bottom:1px solid #1a2a3a;padding-bottom:12px;margin-bottom:20px'>
-        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>MAPA DE SALAS</span>
+        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALAS</span>
         <span style='color:#4a5a6a'> // </span>
         <span style='color:#6e7a8a;font-size:12px'>IBtech</span>
       </div>

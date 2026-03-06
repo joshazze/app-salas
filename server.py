@@ -179,6 +179,8 @@ def cadastrar():
     for m in materias:
         vp.salvar_materia(aluno_id, m["dia"], m["turma"], m["disciplina"], m["professor"])
 
+    threading.Thread(target=vp.email_boas_vindas, args=(username, email, materias), daemon=True).start()
+
     return jsonify({"ok": True, "aluno_id": aluno_id, "username": username,
                     "salvas": len(materias)})
 

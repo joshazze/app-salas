@@ -3,6 +3,7 @@ Servidor Flask — API para o Mapa de Salas IBMEC
 """
 
 import os
+import threading
 import json
 
 from flask import Flask, jsonify, request, render_template

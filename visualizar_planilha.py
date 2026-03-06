@@ -100,7 +100,7 @@ def init_db():
 def buscar_aluno(username):
     with get_db() as con:
         return con.execute(
-            "SELECT id, username, criado FROM alunos WHERE username = ?", (username,)
+            "SELECT id, username, criado FROM alunos WHERE LOWER(username) = LOWER(?)", (username,)
         ).fetchone()
 
 
@@ -129,7 +129,7 @@ def criar_aluno(username, email=""):
             (username, email, HOJE)
         )
         return con.execute(
-            "SELECT id FROM alunos WHERE username = ?", (username,)
+            "SELECT id FROM alunos WHERE LOWER(username) = LOWER(?)", (username,)
         ).fetchone()[0]
 
 

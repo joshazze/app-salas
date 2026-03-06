@@ -37,8 +37,8 @@ def set_trava(estado):
 
 
 def check_adm(data):
-    return (data.get("adm_user") == ADM_USERNAME and
-            data.get("adm_pass") == ADM_PASSWORD)
+    return (data.get("adm_user","").lower() == ADM_USERNAME.lower() and
+            data.get("adm_pass","").lower() == ADM_PASSWORD.lower())
 
 
 @app.before_request

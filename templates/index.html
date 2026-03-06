@@ -79,10 +79,27 @@
   
     footer{background:var(--bg2);border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--text-dim);letter-spacing:1px;padding:14px 18px;width:100%;flex-shrink:0}
     @media(min-width:768px){body{font-size:15px}.hdr-title{font-size:19px}.hdr-sub,.hdr-meta,.hdr-tagline{font-size:13px}.stitle{font-size:13px}.menu-label{font-size:15px}.menu-key{font-size:16px}.menu-badge{font-size:12px}.btn{font-size:14px;padding:9px 20px}.btn.sm{font-size:12px;padding:4px 11px}.btn-back{font-size:13px}input[type=text],.iprefix,select{font-size:15px}.tbl{font-size:13px}.tbl th{font-size:12px}.msg{font-size:14px}.pick-item{font-size:13px}.dt-item{font-size:13px}.aula-card-title{font-size:14px}.aula-card-meta{font-size:13px}.loading{font-size:14px}footer{font-size:12px}}
+
+    body.travado .menu-item:not(.adm-item){pointer-events:none;opacity:0.45;border-color:var(--red)!important}
+    body.travado .menu-item:not(.adm-item) .menu-label{color:var(--red)!important}
+    body.travado .menu-item:not(.adm-item) .menu-key{color:var(--red)!important}
+    body.travado .btn:not(.adm-btn){pointer-events:none;border-color:var(--red)!important;color:var(--red)!important}
+    #banner-trava{display:none;background:#1a0a0a;border:1px solid var(--red);color:var(--red);
+      padding:12px 18px;margin-bottom:20px;text-align:center;font-size:14px;letter-spacing:1px}
+    body.travado #banner-trava{display:block}
+
+    @media(max-width:600px){
+      .tbl{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .btn-row{flex-direction:column}
+      #s-adm-main .menu-item{flex-wrap:wrap;gap:6px}
+      #s-adm-main .btn-back{white-space:nowrap;font-size:11px;padding:4px 8px}
+      .igroup{flex-wrap:nowrap}
+    }
   </style>
 </head>
 <body>
 <div id="app">
+  <div id="banner-trava">&#9888;&nbsp; site fechado &mdash; voltamos em breve.</div>
   <header>
     <div class="hdr-row">
       <span class="hdr-title">MAPA DE SALAS</span>
@@ -421,7 +438,7 @@ function mkPickList(rows,onSelect){
   return ul;
 }
 async function init(){
-  const d=await api('/api/status');G.statusData=d;
+  const d=await api('/api/status');G.statusData=d;if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
   document.getElementById('hdr-meta').innerHTML=
     `<span class="hl">${d.dia}</span> &middot; <span class="hl">${d.hoje}</span> &middot; <span>${d.total} registros</span>`;
   const ul=document.getElementById('cat-menu');
@@ -446,7 +463,7 @@ async function doBusca(){
   out.innerHTML=`<div class="msg info" style="margin-bottom:14px">"${termo}" &mdash; ${d.total} resultado(s)</div>`+mkGroups(d.registros);
 }
 async function doLogin(){
-  const un=document.getElementById('login-inp').value.trim();
+  const un=document.getElementById("login-inp").value.trim().toLowerCase();
   const msg=document.getElementById('login-msg');if(!un)return;
   msg.innerHTML='<div class="loading">verificando...</div>';
   const d=await api('/api/login',{username:un});
@@ -561,7 +578,7 @@ function cancelCadastro(){
 }
 function irCadastro(un){goto('s-cadastro');document.getElementById('cad-un').value=un;cadCheckUser();}
 async function cadCheckUser(){
-  const un=document.getElementById('cad-un').value.trim();
+  const un=document.getElementById("cad-un").value.trim().toLowerCase();
   const msg=document.getElementById('cad-un-msg');if(!un)return;
   msg.innerHTML='<div class="loading">verificando...</div>';
   const d=await api('/api/verificar-username',{username:un});
@@ -614,14 +631,14 @@ function admCreds(){return{adm_user:ADM.user,adm_pass:ADM.pass};}
 function admStep1(){
   const un=document.getElementById('adm-un').value.trim();
   if(!un){return;}
-  ADM.user=un;
+  ADM.user=un.toLowerCase();
   document.getElementById('adm-step1').style.display='none';
   document.getElementById('adm-step2').style.display='block';
   document.getElementById('adm-pw').focus();
 }
 async function admLogin(){
   const pw=document.getElementById('adm-pw').value;
-  ADM.pass=pw;
+  ADM.pass=pw.toLowerCase();
   const d=await api('/api/adm/login',{adm_user:ADM.user,adm_pass:ADM.pass});
   if(!d.ok){
     document.getElementById('adm-step2-msg').innerHTML='<div class="msg error">credenciais incorretas.</div>';

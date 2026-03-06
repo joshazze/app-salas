@@ -17,7 +17,7 @@ CORS(app)
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
 ADM_USERNAME = "adm"
-ADM_PASSWORD = os.environ.get("ADM_PASSWORD", "osmargostoso")
+ADM_PASSWORD = os.environ.get("ADM_PASSWORD", "")
 LOCK_FILE    = os.path.join(os.path.dirname(__file__), "site_lock.json")
 
 
@@ -434,6 +434,83 @@ def adm_status_trava():
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
     return jsonify({"travado": site_travado()})
+
+
+@app.route("/api/adm/email/teste", methods=["POST"])
+def adm_email_teste():
+    data = request.json or {}
+    if not check_adm(data):
+        return jsonify({"erro": "Nao autorizado"}), 401
+
+    aluno = vp.buscar_aluno("josh")
+    if not aluno:
+        return jsonify({"erro": "Usuario josh nao encontrado"}), 404
+    aluno_id, username, _ = aluno
+    row = vp.buscar_aluno_por_id(aluno_id)
+    if not row:
+        return jsonify({"erro": "Dados do usuario nao encontrados"}), 404
+    _, email = row
+
+    horarios = [
+        ("07:10", "07:30"), ("09:30", "09:50"),
+        ("13:10", "13:30"), ("15:30", "15:50"), ("17:20", "19:10")
+    ]
+
+    blocos_horario = ""
+    for inicio, fim in horarios:
+        blocos_horario += f"""
+        <div style='display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #253d54'>
+          <span style='color:#1e90ff;font-size:13px;min-width:50px'>{inicio}</span>
+          <span style='color:#7a9ab5;font-size:12px'>&#8594;</span>
+          <span style='color:#9ab0c4;font-size:12px'>janela ate {fim} &mdash; aulas do turno enviadas</span>
+        </div>"""
+
+    df = get_df()
+    materias = vp.listar_materias_aluno(aluno_id)
+    aulas_semana = []
+    for _, dia, turma, disciplina, professor in materias:
+        aulas_semana.append(f"<div style='padding:5px 14px;border-bottom:1px solid #253d54'>"
+                            f"<span style='color:#1e90ff;min-width:80px;display:inline-block'>{dia}</span>"
+                            f"<span style='color:#dde6f0'>{disciplina}</span>"
+                            f"<span style='color:#7a9ab5;font-size:11px;margin-left:10px'>{turma}</span>"
+                            f"</div>")
+    materias_html = "".join(aulas_semana) if aulas_semana else "<div style='color:#7a9ab5;padding:10px 14px'>Nenhuma materia cadastrada.</div>"
+
+    corpo = f"""
+    <div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>
+      <div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>
+        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>
+        <span style='color:#7a9ab5'> // </span>
+        <span style='color:#9ab0c4;font-size:12px'>email de teste</span>
+      </div>
+
+      <p style='color:#ffc107;font-size:13px;margin-bottom:20px'>&#9432; Este e um email de teste enviado pelo administrador.</p>
+
+      <div style='margin-bottom:24px'>
+        <p style='color:#00d4ff;font-size:12px;letter-spacing:2px;margin-bottom:10px'>// HORARIOS DE ENVIO</p>
+        <div style='border:1px solid #253d54;background:#0d1117'>
+          {blocos_horario}
+        </div>
+        <p style='color:#7a9ab5;font-size:11px;margin-top:6px'>Os emails so sao enviados nos dias em que voce tem aulas no turno correspondente.</p>
+      </div>
+
+      <div style='margin-bottom:24px'>
+        <p style='color:#00d4ff;font-size:12px;letter-spacing:2px;margin-bottom:10px'>// SUAS MATERIAS CADASTRADAS</p>
+        <div style='border:1px solid #253d54;background:#0d1117'>
+          {materias_html}
+        </div>
+      </div>
+
+      <div style='color:#7a9ab5;font-size:11px;margin-top:20px;border-top:1px solid #253d54;padding-top:12px'>
+        &copy; Joshua Azze &amp; IBtech &mdash; <a href='mailto:salas.ibtech@gmail.com' style='color:#7a9ab5'>salas.ibtech@gmail.com</a>
+      </div>
+    </div>"""
+
+    try:
+        vp.enviar_email(email, "[IBSALA] Email de teste", corpo)
+        return jsonify({"ok": True, "enviado_para": email})
+    except Exception as e:
+        return jsonify({"erro": str(e)}), 500
 
 
 # ── Init ──────────────────────────────────────────────────────────────────────

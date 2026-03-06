@@ -89,6 +89,7 @@ def status():
         "csv":        vp.CSV_HOJE,
         "total":      int(len(df)),
         "categorias": resumo,
+        "travado":    site_travado(),
     })
 
 

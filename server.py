@@ -3,6 +3,7 @@ Servidor Flask — API para o Mapa de Salas IBMEC
 """
 
 import os
+import sqlite3
 import threading
 import json
 
@@ -12,7 +13,7 @@ from flask_cors import CORS
 import visualizar_planilha as vp
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://ibsala.com.br", "https://www.ibsala.com.br", "http://localhost:5000"])
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
@@ -54,11 +55,15 @@ def verificar_trava():
 # ── Cache global do DataFrame ─────────────────────────────────────────────────
 
 _df = None
+_df_data = None
 
 
 def get_df():
-    global _df
-    if _df is None:
+    global _df, _df_data
+    hoje = vp._hoje()
+    # Invalida cache se virou o dia
+    if _df is None or _df_data != hoje:
+        _df_data = hoje
         if vp.csv_hoje_existe():
             _df = vp.carregar_do_cache()
         else:
@@ -84,9 +89,9 @@ def status():
     df = get_df()
     resumo = {cat: int(len(df[df["Categoria"] == cat])) for cat in vp.TITULOS_CATEGORIA}
     return jsonify({
-        "hoje":       vp.HOJE,
-        "dia":        vp.DIA_PT,
-        "csv":        vp.CSV_HOJE,
+        "hoje":       vp._hoje(),
+        "dia":        vp._dia_pt(),
+        "csv":        vp._csv_hoje(),
         "total":      int(len(df)),
         "categorias": resumo,
         "travado":    site_travado(),
@@ -133,7 +138,7 @@ def aulas_hoje():
         return jsonify({"erro": "aluno_id ausente"}), 400
 
     df = get_df()
-    materias = vp.listar_materias_aluno(aluno_id, dia=vp.DIA_PT)
+    materias = vp.listar_materias_aluno(aluno_id, dia=vp._dia_pt())
     resultado = []
 
     for _, dia, turma, disciplina, professor in materias:
@@ -308,7 +313,16 @@ def adm_aluno_editar():
     data = request.json or {}
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
-    vp.editar_aluno(data["id"], data["username"], data["email"])
+    username = data.get("username", "").strip()
+    email    = data.get("email", "").strip()
+    if not username or not email:
+        return jsonify({"erro": "Username e email obrigatorios"}), 400
+    try:
+        vp.editar_aluno(data["id"], username, email)
+    except Exception as e:
+        if "UNIQUE" in str(e):
+            return jsonify({"erro": f"Username '{username}' ja existe"}), 409
+        return jsonify({"erro": "Erro ao editar"}), 500
     return jsonify({"ok": True})
 
 
@@ -365,15 +379,20 @@ def adm_email_custom():
       </div>
     </div>"""
 
-    enviados = 0
-    erros    = 0
-    for d in destinatarios:
-        try:
-            vp.enviar_email(d["email"], assunto, corpo)
-            enviados += 1
-        except Exception:
-            erros += 1
-    return jsonify({"ok": True, "enviados": enviados, "erros": erros})
+    def _enviar_lote():
+        import html as html_lib
+        corpo_safe = corpo.replace("{mensagem}", html_lib.escape(mensagem))
+        enviados = erros = 0
+        for d in destinatarios:
+            try:
+                vp.enviar_email(d["email"], assunto, corpo_safe)
+                enviados += 1
+                import time; time.sleep(2)
+            except Exception:
+                erros += 1
+        print(f"[email-custom] {enviados} enviados, {erros} erros.")
+    threading.Thread(target=_enviar_lote, daemon=True).start()
+    return jsonify({"ok": True, "msg": f"Envio para {len(destinatarios)} destinatario(s) iniciado."})
 
 
 @app.route("/api/adm/email/aluno", methods=["POST"])
@@ -450,7 +469,6 @@ def adm_email_teste():
         username_row = vp.buscar_aluno_por_id(aluno_id_param)
         _, email = username_row
         # pega username
-        import sqlite3
         with vp.get_db() as con:
             r = con.execute("SELECT username FROM alunos WHERE id=?", (aluno_id_param,)).fetchone()
         username = r[0] if r else "usuario"

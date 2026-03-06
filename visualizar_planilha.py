@@ -27,15 +27,26 @@ SCOPES = [
 BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 PASTA_CACHE = os.path.join(BASE_DIR, "cache")
 DB_PATH     = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "alunos.db"))
-HOJE        = datetime.now().strftime("%Y-%m-%d")
-DIA_SEMANA  = datetime.now().strftime("%A").upper()
-CSV_HOJE    = os.path.join(PASTA_CACHE, f"mapa_salas_{HOJE}.csv")
-
 DIAS_PT = {
     "MONDAY": "SEGUNDA", "TUESDAY": "TERCA", "WEDNESDAY": "QUARTA",
     "THURSDAY": "QUINTA", "FRIDAY": "SEXTA", "SATURDAY": "SABADO", "SUNDAY": "DOMINGO",
 }
-DIA_PT = DIAS_PT.get(DIA_SEMANA, DIA_SEMANA)
+
+def _hoje():
+    return datetime.now().strftime("%Y-%m-%d")
+
+def _dia_pt():
+    dia = datetime.now().strftime("%A").upper()
+    return DIAS_PT.get(dia, dia)
+
+def _csv_hoje():
+    return os.path.join(PASTA_CACHE, f"mapa_salas_{_hoje()}.csv")
+
+# Compatibilidade com código existente (scheduler atualiza diretamente)
+HOJE        = _hoje()
+DIA_SEMANA  = datetime.now().strftime("%A").upper()
+CSV_HOJE    = _csv_hoje()
+DIA_PT      = _dia_pt()
 
 TITULOS_CATEGORIA = [
     "GRADUAÇÃO - MANHÃ",
@@ -107,7 +118,7 @@ def buscar_aluno(username):
 def buscar_aluno_por_email(email):
     with get_db() as con:
         return con.execute(
-            "SELECT id FROM alunos WHERE email = ?", (email,)
+            "SELECT id FROM alunos WHERE LOWER(email) = LOWER(?)", (email,)
         ).fetchone()
 
 
@@ -124,13 +135,11 @@ def set_bloqueio_aluno(aluno_id, bloqueado):
 
 def criar_aluno(username, email=""):
     with get_db() as con:
-        con.execute(
+        cur = con.execute(
             "INSERT INTO alunos (username, email, criado) VALUES (?, ?, ?)",
-            (username, email, HOJE)
+            (username, email, _hoje())
         )
-        return con.execute(
-            "SELECT id FROM alunos WHERE LOWER(username) = LOWER(?)", (username,)
-        ).fetchone()[0]
+        return cur.lastrowid
 
 
 def listar_todos_alunos():
@@ -512,12 +521,13 @@ def buscar_planilha_remota():
 # ── Cache CSV ─────────────────────────────────────────────────────────────────
 
 def csv_hoje_existe():
-    return os.path.exists(CSV_HOJE)
+    return os.path.exists(_csv_hoje())
 
 
 def carregar_do_cache():
-    print(f"[cache] Carregando CSV do dia: {CSV_HOJE}")
-    return pd.read_csv(CSV_HOJE, encoding="utf-8-sig", dtype=str)
+    csv = _csv_hoje()
+    print(f"[cache] Carregando CSV do dia: {csv}")
+    return pd.read_csv(csv, encoding="utf-8-sig", dtype=str)
 
 
 def _excluir_csvs_anteriores():

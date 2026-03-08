@@ -26,7 +26,13 @@ def rotina_atualizacao(janela_fim=None):
         df_bruto = vp.buscar_planilha_remota()
         df = vp.parsear_e_organizar(df_bruto)
         vp.salvar_csv(df)
-        vp.notificar_todos(df, dia_pt, janela_fim=janela_fim)
+        # Filtra apenas registros do dia atual antes de notificar
+        import pandas as pd
+        if "Dia" in df.columns:
+            df_hoje = df[df["Dia"].str.upper() == dia_pt.upper()].reset_index(drop=True)
+        else:
+            df_hoje = df
+        vp.notificar_todos(df_hoje, dia_pt, janela_fim=janela_fim)
         print(f"[scheduler] Concluido em {datetime.now().strftime('%H:%M:%S')}")
     except Exception as e:
         print(f"[scheduler] Erro: {e}")

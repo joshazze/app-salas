@@ -73,6 +73,15 @@ def get_df():
     return _df
 
 
+def get_df_hoje():
+    """Retorna o dataframe filtrado apenas com registros do dia atual."""
+    df = get_df()
+    dia_hoje = vp._dia_pt()
+    if "Dia" in df.columns:
+        return df[df["Dia"].str.upper() == dia_hoje.upper()].reset_index(drop=True)
+    return df
+
+
 def df_para_lista(df):
     return df.fillna("").to_dict(orient="records")
 
@@ -86,15 +95,17 @@ def index():
 
 @app.route("/api/status")
 def status():
-    df = get_df()
-    resumo = {cat: int(len(df[df["Categoria"] == cat])) for cat in vp.TITULOS_CATEGORIA}
+    df_hoje = get_df_hoje()
+    resumo = {cat: int(len(df_hoje[df_hoje["Categoria"] == cat])) for cat in vp.TITULOS_CATEGORIA}
     return jsonify({
-        "hoje":       vp._hoje(),
-        "dia":        vp._dia_pt(),
-        "csv":        vp._csv_hoje(),
-        "total":      int(len(df)),
-        "categorias": resumo,
-        "travado":    site_travado(),
+        "hoje":         vp._hoje(),
+        "dia":          vp._dia_pt(),
+        "csv":          vp._csv_hoje(),
+        "total":        int(len(df_hoje)),
+        "total_alunos":       vp.contar_alunos(),
+        "total_disciplinas":  vp.contar_disciplinas(),
+        "categorias":   resumo,
+        "travado":      site_travado(),
     })
 
 
@@ -103,16 +114,16 @@ def buscar():
     termo = (request.json or {}).get("termo", "").strip()
     if not termo:
         return jsonify({"erro": "Termo vazio"}), 400
-    df = get_df()
-    resultado = vp.filtrar_df(df, termo)
+    df_hoje = get_df_hoje()
+    resultado = vp.filtrar_df(df_hoje, termo)
     registros = df_para_lista(resultado)
     return jsonify({"termo": termo, "total": len(registros), "registros": registros})
 
 
 @app.route("/api/categoria/<path:nome>")
 def categoria(nome):
-    df = get_df()
-    subset = df[df["Categoria"] == nome]
+    df_hoje = get_df_hoje()
+    subset = df_hoje[df_hoje["Categoria"] == nome]
     return jsonify({"categoria": nome, "registros": df_para_lista(subset)})
 
 
@@ -137,7 +148,7 @@ def aulas_hoje():
     if not aluno_id:
         return jsonify({"erro": "aluno_id ausente"}), 400
 
-    df = get_df()
+    df = get_df_hoje()
     materias = vp.listar_materias_aluno(aluno_id, dia=vp._dia_pt())
     resultado = []
 
@@ -182,7 +193,8 @@ def cadastrar():
     if vp.buscar_aluno_por_email(email):
         return jsonify({"erro": f"Email '{email}' ja esta cadastrado"}), 409
 
-    aluno_id = vp.criar_aluno(username, email)
+    receber_email = data.get("receber_email", True)
+    aluno_id = vp.criar_aluno(username, email, receber_email=receber_email)
     for m in materias:
         vp.salvar_materia(aluno_id, m["dia"], m["turma"], m["disciplina"], m["professor"])
 
@@ -221,6 +233,37 @@ def verificar_username():
     username = (request.json or {}).get("username", "").strip()
     existe = vp.buscar_aluno(username) is not None
     return jsonify({"disponivel": not existe})
+
+
+@app.route("/api/recuperar-username", methods=["POST"])
+def recuperar_username():
+    email = (request.json or {}).get("email", "").strip()
+    if not email:
+        return jsonify({"erro": "Email obrigatorio"}), 400
+    row = vp.buscar_aluno_por_email(email)
+    if not row:
+        return jsonify({"erro": "Nenhum cadastro encontrado com este email"}), 404
+    aluno_id = row[0]
+    with vp.get_db() as con:
+        r = con.execute("SELECT username FROM alunos WHERE id=?", (aluno_id,)).fetchone()
+    if not r:
+        return jsonify({"erro": "Erro ao buscar usuario"}), 500
+    username = r[0]
+    import threading
+    threading.Thread(target=vp.email_recuperar_username, args=(username, email), daemon=True).start()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/configuracoes", methods=["POST"])
+def configuracoes():
+    data = request.json or {}
+    aluno_id = data.get("aluno_id")
+    if not aluno_id:
+        return jsonify({"erro": "aluno_id ausente"}), 400
+    if "receber_email" in data:
+        vp.set_receber_email(aluno_id, data["receber_email"])
+        return jsonify({"ok": True})
+    return jsonify({"receber_email": vp.get_receber_email(aluno_id)})
 
 
 # ── Rotas Admin ───────────────────────────────────────────────────────────────
@@ -350,8 +393,8 @@ def adm_email_todos():
     data = request.json or {}
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
-    df = get_df()
-    threading.Thread(target=vp.notificar_todos, args=(df, vp.DIA_PT), daemon=True).start()
+    df = get_df_hoje()
+    threading.Thread(target=vp.notificar_todos, args=(df, vp._dia_pt()), daemon=True).start()
     return jsonify({"ok": True, "msg": "Envio iniciado em background."})
 
 
@@ -411,8 +454,8 @@ def adm_email_aluno():
     if not email:
         return jsonify({"erro": "Aluno sem email"}), 400
 
-    df = get_df()
-    materias = vp.listar_materias_aluno(aluno_id, dia=vp.DIA_PT)
+    df = get_df_hoje()
+    materias = vp.listar_materias_aluno(aluno_id, dia=vp._dia_pt())
     aulas = []
     for _, dia, turma, disciplina, professor in materias:
         linhas = vp.filtrar_df(df, f"{turma} {disciplina}")
@@ -425,7 +468,7 @@ def adm_email_aluno():
             "salas":      linhas.fillna("").to_dict(orient="records"),
         })
 
-    assunto, corpo = vp._montar_email_aulas(username, vp.DIA_PT, aulas)
+    assunto, corpo = vp._montar_email_aulas(username, vp._dia_pt(), aulas)
     if not assunto:
         return jsonify({"erro": "Nenhuma aula hoje"}), 400
     vp.enviar_email(email, assunto, corpo)

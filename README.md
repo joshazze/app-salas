@@ -10,7 +10,7 @@
 // IBtech · Sistema de Consulta de Salas
 ```
 
-> Plataforma web para consulta em tempo real de salas, horários e professores do **IBtech (IBMEC)**.
+> Plataforma web para consulta em tempo real de salas, horários e professores do **IBMEC BH**.
 > Acesse em: **[ibsala.com.br](https://ibsala.com.br)**
 
 ---

@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 import visualizar_planilha as vp
 from apscheduler.schedulers.blocking import BlockingScheduler
 
-def rotina_atualizacao(janela_fim=None):
+def rotina_atualizacao(janela_fim=None, janela_inicio=None):
     print(f"\n[scheduler] Iniciando atualizacao (janela ate {janela_fim})...")
     try:
         from datetime import datetime
@@ -32,7 +32,7 @@ def rotina_atualizacao(janela_fim=None):
             df_hoje = df[df["Dia"].str.upper() == dia_pt.upper()].reset_index(drop=True)
         else:
             df_hoje = df
-        vp.notificar_todos(df_hoje, dia_pt, janela_fim=janela_fim)
+        vp.notificar_todos(df_hoje, dia_pt, janela_fim=janela_fim, janela_inicio=janela_inicio)
         print(f"[scheduler] Concluido em {datetime.now().strftime('%H:%M:%S')}")
     except Exception as e:
         print(f"[scheduler] Erro: {e}")
@@ -40,10 +40,10 @@ def rotina_atualizacao(janela_fim=None):
 if __name__ == "__main__":
     vp.init_db()
     scheduler = BlockingScheduler(timezone="America/Sao_Paulo")
-    scheduler.add_job(rotina_atualizacao, "cron", hour=7,  minute=10, kwargs={"janela_fim": "07:50"})
-    scheduler.add_job(rotina_atualizacao, "cron", hour=9,  minute=30, kwargs={"janela_fim": "10:10"})
-    scheduler.add_job(rotina_atualizacao, "cron", hour=13, minute=10, kwargs={"janela_fim": "13:50"})
-    scheduler.add_job(rotina_atualizacao, "cron", hour=15, minute=30, kwargs={"janela_fim": "16:10"})
-    scheduler.add_job(rotina_atualizacao, "cron", hour=17, minute=20, kwargs={"janela_fim": "23:00"})
+    scheduler.add_job(rotina_atualizacao, "cron", hour=7,  minute=10, kwargs={"janela_inicio": "07:00", "janela_fim": "07:50"})
+    scheduler.add_job(rotina_atualizacao, "cron", hour=9,  minute=30, kwargs={"janela_inicio": "09:00", "janela_fim": "10:10"})
+    scheduler.add_job(rotina_atualizacao, "cron", hour=13, minute=10, kwargs={"janela_inicio": "13:00", "janela_fim": "13:50"})
+    scheduler.add_job(rotina_atualizacao, "cron", hour=15, minute=30, kwargs={"janela_inicio": "15:00", "janela_fim": "16:10"})
+    scheduler.add_job(rotina_atualizacao, "cron", hour=17, minute=20, kwargs={"janela_inicio": "17:00", "janela_fim": "23:00"})
     print("Scheduler iniciado. Aguardando horarios agendados...")
     scheduler.start()

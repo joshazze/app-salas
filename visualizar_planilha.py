@@ -483,19 +483,26 @@ def _montar_email_aulas(username, dia, aulas):
     return assunto, corpo
 
 
-def _horario_na_janela(horario_str, janela_fim):
+def _horario_na_janela(horario_str, janela_fim, janela_inicio=None):
     if not horario_str or not janela_fim:
         return True
     try:
         inicio_str = str(horario_str).split("/")[0].strip()[:5]
         h1, m1 = map(int, inicio_str.split(":"))
+        minutos_aula = h1 * 60 + m1
         h2, m2 = map(int, janela_fim.split(":"))
-        return (h1 * 60 + m1) <= (h2 * 60 + m2)
+        if minutos_aula > h2 * 60 + m2:
+            return False
+        if janela_inicio:
+            h0, m0 = map(int, janela_inicio.split(":"))
+            if minutos_aula < h0 * 60 + m0:
+                return False
+        return True
     except Exception:
         return True
 
 
-def notificar_todos(df, dia, janela_fim=None):
+def notificar_todos(df, dia, janela_fim=None, janela_inicio=None):
     """Envia email de aulas do dia para cada aluno com aula dentro da janela horária."""
     alunos = listar_alunos_com_email()
     if not alunos:
@@ -517,7 +524,7 @@ def notificar_todos(df, dia, janela_fim=None):
 
             if janela_fim and not linhas.empty:
                 linhas = linhas[linhas["Horario"].apply(
-                    lambda h: _horario_na_janela(h, janela_fim)
+                    lambda h: _horario_na_janela(h, janela_fim, janela_inicio)
                 )]
 
             if linhas.empty:

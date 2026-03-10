@@ -237,20 +237,19 @@ def remover_materia(aluno_id, materia_id):
 
 
 def buscar_disciplinas_historico(termo):
-    palavras = termo.lower().split()
+    palavras = [_normalizar_texto(p) for p in termo.split()]
     if not palavras:
         return []
+    # Busca SQL sem acento na primeira palavra
     primeira = f"%{palavras[0]}%"
     with get_db() as con:
         rows = con.execute(
             """SELECT turma, disciplina, professor FROM disciplinas_historico
-               WHERE lower(turma) LIKE ? OR lower(disciplina) LIKE ? OR lower(professor) LIKE ?
-               ORDER BY turma, disciplina LIMIT 200""",
-            (primeira, primeira, primeira)
+               ORDER BY turma, disciplina LIMIT 500"""
         ).fetchall()
     resultado = []
     for turma, disciplina, professor in rows:
-        texto = (turma + " " + disciplina + " " + professor).lower()
+        texto = _normalizar_texto(turma + " " + disciplina + " " + professor)
         if all(p in texto for p in palavras):
             resultado.append({"Turma": turma, "Disciplina": disciplina, "Professor": professor})
     return resultado[:50]
@@ -742,13 +741,22 @@ def parsear_e_organizar(df_bruto):
 
 # ── Busca ─────────────────────────────────────────────────────────────────────
 
+def _normalizar_texto(texto):
+    """Remove acentos e converte para minúsculas para comparação semântica."""
+    nfd = unicodedata.normalize("NFD", str(texto))
+    return "".join(c for c in nfd if unicodedata.category(c) != "Mn").lower()
+
+
 def filtrar_df(df, termo):
-    """Retorna linhas onde todas as palavras do termo aparecem em qualquer coluna."""
+    """Retorna linhas onde todas as palavras do termo aparecem em qualquer coluna.
+    Insensível a acentos: financa == finanças, osmar == Osmar, etc.
+    """
     colunas = [c for c in df.columns if c != "Categoria"]
     texto_linha = df[colunas].fillna("").apply(
-        lambda row: " ".join(row.values.astype(str)), axis=1
-    ).str.lower()
+        lambda row: _normalizar_texto(" ".join(row.values.astype(str))), axis=1
+    )
+    palavras = [_normalizar_texto(p) for p in termo.split()]
     mascara = pd.Series([True] * len(df), index=df.index)
-    for palavra in termo.lower().split():
+    for palavra in palavras:
         mascara &= texto_linha.str.contains(palavra, na=False, regex=False)
     return df[mascara].reset_index(drop=True)

@@ -167,7 +167,7 @@ async function doSalasLivres(){
     const s=d[slot];
     if(!s)continue;
     const ativo=agora_min>=SLOT_INI[slot]&&agora_min<=SLOT_FIM[slot];
-    const badge=ativo?`<span style="margin-left:8px;font-size:10px;padding:2px 7px;background:var(--cyan);color:var(--bg);font-weight:bold">AGORA</span>`:'';
+    const badge=ativo?`<span class="badge-agora" style="margin-left:8px;font-size:10px;padding:2px 7px;background:var(--cyan);color:var(--bg);font-weight:bold">AGORA</span>`:'';
     const chips=s.salas.length
       ?s.salas.map(r=>`<span style="padding:5px 12px;border:1px solid var(--cyan);color:var(--cyan);font-size:12px;font-weight:bold">${r}</span>`).join('')
       :`<span style="color:var(--text-dim);font-size:12px">Nenhuma sala livre${filtro?` com "${filtro}"`:''}.</span>`;

@@ -72,6 +72,14 @@ async function init(){
   if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
   const _aviso=document.getElementById('main-trava-aviso');
   if(_aviso)_aviso.style.display=d.travado?'block':'none';
+  // Desabilita cliques nos itens do menu principal quando travado
+  document.querySelectorAll('#s-main .menu-item:not(.adm-item)').forEach(el=>{
+    if(d.travado){el._onclick=el.onclick;el.onclick=null;el.style.pointerEvents='none';el.style.cursor='not-allowed';}
+    else{if(el._onclick)el.onclick=el._onclick;el.style.pointerEvents='';el.style.cursor='';}
+  });
+  document.querySelectorAll('#s-main .btn:not(.adm-btn)').forEach(el=>{
+    el.disabled=!!d.travado;
+  });
   const meses=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const [,mes,dia2]=(d.hoje||'2000-01-01').split('-');
   const dataFmt=`${parseInt(dia2)} de ${meses[parseInt(mes)-1]}`;
@@ -515,6 +523,7 @@ async function admToggleLock(){
   const novo=!d.travado;
   await api('/api/adm/trava',{...admCreds(),travado:novo});
   admAtualizarBadge(novo);
+  init(); // sincroniza estado do menu principal
 }
 
 // disciplinas

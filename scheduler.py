@@ -83,6 +83,29 @@ def rotina_atualizacao(slot=None):
         _salvar_status(slot, enviados, erros, erro_msg)
 
 
+def rotina_captura():
+    """Busca e salva o CSV sem enviar emails. Roda a cada 20min nos dias uteis."""
+    from datetime import datetime as _dt
+    agora = _dt.now()
+    dia_semana = agora.strftime("%A").upper()
+    # Pula fins de semana (SATURDAY / SUNDAY)
+    if dia_semana in ("SATURDAY", "SUNDAY"):
+        return
+    print(f"[scheduler] Captura ({agora.strftime('%H:%M')})...")
+    try:
+        hoje   = agora.strftime("%Y-%m-%d")
+        dia_pt = vp.DIAS_PT.get(dia_semana, dia_semana)
+        vp.HOJE     = hoje
+        vp.DIA_PT   = dia_pt
+        vp.CSV_HOJE = os.path.join(vp.PASTA_CACHE, f"mapa_salas_{hoje}.csv")
+        df_bruto = vp.buscar_planilha_remota()
+        df       = vp.parsear_e_organizar(df_bruto)
+        vp.salvar_csv(df)
+        print(f"[scheduler] Captura OK — {len(df)} linhas.")
+    except Exception as e:
+        print(f"[scheduler] Erro na captura: {e}")
+
+
 def rotina_monitoramento(slot):
     """Verifica se o envio do slot foi satisfatorio e notifica o admin se nao foi."""
     label = vp.SLOTS[slot]["label"] if slot in vp.SLOTS else slot
@@ -196,6 +219,10 @@ if __name__ == "__main__":
     scheduler.add_job(rotina_monitoramento, "cron", hour=14, minute=10, kwargs={"slot": "tarde2"})
     scheduler.add_job(rotina_monitoramento, "cron", hour=18, minute=10, kwargs={"slot": "noite1"})
     scheduler.add_job(rotina_monitoramento, "cron", hour=19, minute=10, kwargs={"slot": "noite2"})
+
+    # Captura do CSV a cada 20min — dias uteis, 07:00 a 22:00
+    scheduler.add_job(rotina_captura, "cron", day_of_week="mon-fri", hour="7-21", minute="0,20,40")
+    scheduler.add_job(rotina_captura, "cron", day_of_week="mon-fri", hour=22, minute=0)
 
     print("Scheduler iniciado. Aguardando horarios agendados...")
     scheduler.start()

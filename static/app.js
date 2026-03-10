@@ -72,14 +72,13 @@ async function init(){
   const meses=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const [,mes,dia2]=d.hoje.split('-');
   const dataFmt=`${parseInt(dia2)} de ${meses[parseInt(mes)-1]}`;
-  const capInfo=d.ultima_captura&&d.total>0
-    ?`ultima captura ${d.ultima_captura} — ${d.total} disciplinas capturadas`
-    :`ultima captura ${d.ultima_captura}`;
+  const _min=d.ultima_captura_min;
+  const _capStr=_min>=0?(_min===0?'agora mesmo':_min===1?'ha 1 min':`ha ${_min} min`):'--';
+  const _discStr=d.total>0?` · ${d.total} disc.`:'';
   document.getElementById('hdr-meta').innerHTML=
     `<span class="hl">${d.dia}</span> · <span class="hl">${dataFmt}</span>`
-    +` · <span>(${capInfo})</span>`
-    +` · <span>${d.total_disciplinas} disciplinas salvas</span>`
-    +` · <span>${d.total_alunos} alunos ativos</span>`;
+    +` · <span>capturado ${_capStr}${_discStr}</span>`
+    +` · <span>${d.total_alunos} alunos</span>`;
   const ul=document.getElementById('cat-menu');
   let idx=1;
   d.categorias.forEach(([cat,n])=>{

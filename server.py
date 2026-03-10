@@ -113,14 +113,17 @@ def status():
         mtime = _os.path.getmtime(csv_path)
         from datetime import datetime as _dt
         ultima_captura = _dt.fromtimestamp(mtime).strftime("%H:%M")
+        ultima_captura_min = int((_dt.now().timestamp() - mtime) / 60)
     except Exception:
         ultima_captura = "--:--"
+        ultima_captura_min = -1
     return jsonify({
         "hoje":           vp._hoje(),
         "dia":            vp._dia_pt(),
         "csv":            csv_path,
         "total":          int(len(df_hoje)),
         "ultima_captura": ultima_captura,
+        "ultima_captura_min": ultima_captura_min,
         "total_alunos":       vp.contar_alunos(),
         "total_disciplinas":  vp.contar_disciplinas(),
         "categorias":   resumo,

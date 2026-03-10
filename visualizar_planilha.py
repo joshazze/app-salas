@@ -953,6 +953,62 @@ def salvar_csv(df_organizado):
     atualizar_historico_salas(df_organizado)
 
 
+def salvar_csv_incremental(df_novo):
+    """
+    Primeira captura do dia: salva CSV diario do zero.
+    Capturas seguintes: salva temporario, faz merge no diario preservando
+    todas as linhas ja existentes e adicionando/atualizando as novas.
+    """
+    os.makedirs(PASTA_CACHE, exist_ok=True)
+    _excluir_csvs_anteriores()
+    path      = _csv_hoje()
+    path_tmp  = path.replace(".csv", "_tmp.csv")
+
+    # Sempre salva o temporario para auditoria
+    df_novo.to_csv(path_tmp, index=False, encoding="utf-8-sig")
+
+    if not os.path.exists(path):
+        # ── Primeira captura do dia ──────────────────────────────────────────
+        df_novo.to_csv(path, index=False, encoding="utf-8-sig")
+        print(f"[cache] Novo CSV diario criado: {path} ({len(df_novo)} linhas)")
+    else:
+        # ── Captura subsequente: merge temp -> diario ────────────────────────
+        try:
+            df_diario = pd.read_csv(path, encoding="utf-8-sig")
+        except Exception as e:
+            print(f"[cache] Erro ao ler diario, substituindo: {e}")
+            df_novo.to_csv(path, index=False, encoding="utf-8-sig")
+            atualizar_historico_disciplinas(df_novo)
+            atualizar_historico_salas(df_novo)
+            return
+
+        KEY_COLS = [c for c in ["Categoria", "Turma", "Disciplina", "Horario"]
+                    if c in df_novo.columns and c in df_diario.columns]
+
+        if KEY_COLS:
+            try:
+                # Atualiza linhas existentes com valores do temp
+                d_idx = df_diario.set_index(KEY_COLS)
+                n_idx = df_novo.set_index(KEY_COLS)
+                d_idx.update(n_idx)
+                # Acrescenta linhas novas que nao existiam no diario
+                novas = n_idx[~n_idx.index.isin(d_idx.index)]
+                df_merged = pd.concat([d_idx, novas]).reset_index()
+            except Exception as e:
+                print(f"[cache] Erro no merge indexado ({e}), usando concat+dedup")
+                df_merged = pd.concat([df_diario, df_novo]).drop_duplicates()
+        else:
+            df_merged = pd.concat([df_diario, df_novo]).drop_duplicates()
+
+        df_merged.to_csv(path, index=False, encoding="utf-8-sig")
+        n_add = len(df_merged) - len(df_diario)
+        print(f"[cache] CSV diario atualizado: {len(df_merged)} linhas "
+              f"(+{n_add} novas, {len(df_novo)} no temp)")
+
+    atualizar_historico_disciplinas(df_novo)
+    atualizar_historico_salas(df_novo)
+
+
 # ── Parse ─────────────────────────────────────────────────────────────────────
 
 def _normalizar_col(texto):

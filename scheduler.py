@@ -66,7 +66,7 @@ def rotina_atualizacao(slot=None):
 
         df_bruto = vp.buscar_planilha_remota()
         df = vp.parsear_e_organizar(df_bruto)
-        vp.salvar_csv(df)
+        vp.salvar_csv_incremental(df)
 
         if "Dia" in df.columns:
             df_hoje = df[df["Dia"].astype(str).apply(vp._normalizar_texto) == vp._normalizar_texto(dia_pt)].reset_index(drop=True)
@@ -100,7 +100,7 @@ def rotina_captura():
         vp.CSV_HOJE = os.path.join(vp.PASTA_CACHE, f"mapa_salas_{hoje}.csv")
         df_bruto = vp.buscar_planilha_remota()
         df       = vp.parsear_e_organizar(df_bruto)
-        vp.salvar_csv(df)
+        vp.salvar_csv_incremental(df)
         print(f"[scheduler] Captura OK — {len(df)} linhas.")
     except Exception as e:
         print(f"[scheduler] Erro na captura: {e}")

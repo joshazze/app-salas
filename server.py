@@ -102,11 +102,20 @@ def index():
 def status():
     df_hoje = get_df_hoje()
     resumo = {cat: int(len(df_hoje[df_hoje["Categoria"] == cat])) for cat in vp.TITULOS_CATEGORIA}
+    import os as _os
+    csv_path = vp._csv_hoje()
+    try:
+        mtime = _os.path.getmtime(csv_path)
+        from datetime import datetime as _dt
+        ultima_captura = _dt.fromtimestamp(mtime).strftime("%H:%M")
+    except Exception:
+        ultima_captura = "--:--"
     return jsonify({
-        "hoje":         vp._hoje(),
-        "dia":          vp._dia_pt(),
-        "csv":          vp._csv_hoje(),
-        "total":        int(len(df_hoje)),
+        "hoje":           vp._hoje(),
+        "dia":            vp._dia_pt(),
+        "csv":            csv_path,
+        "total":          int(len(df_hoje)),
+        "ultima_captura": ultima_captura,
         "total_alunos":       vp.contar_alunos(),
         "total_disciplinas":  vp.contar_disciplinas(),
         "categorias":   resumo,

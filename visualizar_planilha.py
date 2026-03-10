@@ -168,7 +168,7 @@ def listar_alunos_com_email():
 
 def contar_alunos():
     with get_db() as con:
-        row = con.execute("SELECT COUNT(*) FROM alunos").fetchone()
+        row = con.execute("SELECT COUNT(*) FROM alunos WHERE bloqueado=0").fetchone()
     return row[0] if row else 0
 
 def contar_disciplinas():

@@ -57,8 +57,11 @@ function mkPickList(rows,onSelect){
 }
 async function init(){
   const d=await api('/api/status');G.statusData=d;if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
+  const capInfo=d.ultima_captura&&d.total>0
+    ?`ultima captura ${d.ultima_captura} &mdash; ${d.total} disciplinas capturadas`
+    :`ultima captura ${d.ultima_captura}`;
   document.getElementById('hdr-meta').innerHTML=
-    `<span class="hl">${d.dia}</span> &middot; <span class="hl">${d.hoje}</span> &middot; <span>${d.total} capturas de hoje</span> &middot; <span>${d.total_alunos} aluno(s)</span> &middot; <span>${d.total_disciplinas} disciplina(s)</span>`;
+    `<span>(${capInfo})</span> &mdash; <span>${d.total_disciplinas} disciplinas salvas</span> &mdash; <span>${d.total_alunos} alunos ativos</span>`;
   const ul=document.getElementById('cat-menu');
   let idx=1;
   Object.entries(d.categorias).forEach(([cat,n])=>{

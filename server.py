@@ -13,6 +13,7 @@ from flask_cors import CORS
 import visualizar_planilha as vp
 
 app = Flask(__name__)
+app.config["JSON_SORT_KEYS"] = False
 CORS(app, origins=["https://ibsala.com.br", "https://www.ibsala.com.br", "http://localhost:5000"])
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
@@ -73,12 +74,16 @@ def get_df():
     return _df
 
 
+def _sem_acento(s):
+    import unicodedata
+    return unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode('ascii').upper()
+
 def get_df_hoje():
     """Retorna o dataframe filtrado apenas com registros do dia atual."""
     df = get_df()
     dia_hoje = vp._dia_pt()
     if "Dia" in df.columns:
-        return df[df["Dia"].str.upper() == dia_hoje.upper()].reset_index(drop=True)
+        return df[df["Dia"].apply(_sem_acento) == _sem_acento(dia_hoje)].reset_index(drop=True)
     return df
 
 
@@ -163,7 +168,7 @@ def aulas_hoje():
             "salas":      df_para_lista(linhas),
         })
 
-    return jsonify({"dia": vp.DIA_PT, "hoje": vp.HOJE, "aulas": resultado})
+    return jsonify({"dia": vp._dia_pt(), "hoje": vp._hoje(), "aulas": resultado})
 
 
 @app.route("/api/minhas-materias", methods=["POST"])
@@ -378,6 +383,24 @@ def adm_aluno_bloquear():
     return jsonify({"ok": True})
 
 
+
+
+@app.route("/api/adm/alunos/buscar", methods=["POST"])
+def adm_alunos_buscar():
+    data = request.json or {}
+    if not check_adm(data):
+        return jsonify({"erro": "Nao autorizado"}), 401
+    termo = data.get("termo", "").strip().lower()
+    limite = int(data.get("limite", 50))
+    rows = vp.listar_todos_alunos()
+    if termo:
+        rows = [r for r in rows if termo in r[1].lower() or termo in (r[2] or "").lower()]
+    total = len(rows)
+    rows = rows[:limite]
+    return jsonify({"total": total, "registros": [
+        {"id": r[0], "username": r[1], "email": r[2], "criado": r[3], "bloqueado": bool(r[4])}
+        for r in rows
+    ]})
 @app.route("/api/adm/alunos/excluir", methods=["POST"])
 def adm_aluno_excluir():
     data = request.json or {}
@@ -400,6 +423,7 @@ def adm_email_todos():
 
 @app.route("/api/adm/email/custom", methods=["POST"])
 def adm_email_custom():
+    import html as html_lib
     data = request.json or {}
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
@@ -409,34 +433,34 @@ def adm_email_custom():
     if not assunto or not mensagem or not destinatarios:
         return jsonify({"erro": "Campos incompletos"}), 400
 
-    corpo = f"""
-    <div style='background:#080c10;color:#c9d1d9;font-family:Courier New,monospace;padding:24px;max-width:600px'>
-      <div style='border-bottom:1px solid #1a2a3a;padding-bottom:12px;margin-bottom:20px'>
-        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>
-        <span style='color:#4a5a6a'> // </span>
-        <span style='color:#6e7a8a;font-size:12px'>IBtech</span>
-      </div>
-      <div style='white-space:pre-wrap;font-size:14px'>{mensagem}</div>
-      <div style='color:#4a5a6a;font-size:11px;margin-top:20px;border-top:1px solid #1a2a3a;padding-top:12px'>
-        Este email foi enviado pelo administrador do sistema IBtech.
-      </div>
-    </div>"""
+    mensagem_safe = html_lib.escape(mensagem).replace("\n", "<br>")
+    corpo = (
+        "<div style='background:#080c10;color:#c9d1d9;font-family:Courier New,monospace;padding:24px;max-width:600px'>"
+        "<div style='border-bottom:1px solid #1a2a3a;padding-bottom:12px;margin-bottom:20px'>"
+        "<span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>"
+        "<span style='color:#4a5a6a'> // </span>"
+        "<span style='color:#6e7a8a;font-size:12px'>IBtech</span>"
+        "</div>"
+        f"<div style='white-space:pre-wrap;font-size:14px'>{mensagem_safe}</div>"
+        "<div style='color:#4a5a6a;font-size:11px;margin-top:20px;border-top:1px solid #1a2a3a;padding-top:12px'>"
+        "Este email foi enviado pelo administrador do sistema IBtech."
+        "</div></div>"
+    )
 
     def _enviar_lote():
-        import html as html_lib
-        corpo_safe = corpo.replace("{mensagem}", html_lib.escape(mensagem))
+        import time
         enviados = erros = 0
         for d in destinatarios:
             try:
-                vp.enviar_email(d["email"], assunto, corpo_safe)
+                vp.enviar_email(d["email"], assunto, corpo)
                 enviados += 1
-                import time; time.sleep(2)
+                time.sleep(2)
             except Exception:
                 erros += 1
         print(f"[email-custom] {enviados} enviados, {erros} erros.")
     threading.Thread(target=_enviar_lote, daemon=True).start()
-    return jsonify({"ok": True, "msg": f"Envio para {len(destinatarios)} destinatario(s) iniciado."})
-
+    return jsonify({"ok": True, "total": len(destinatarios),
+                    "msg": f"Envio para {len(destinatarios)} destinatario(s) iniciado."})
 
 @app.route("/api/adm/email/aluno", methods=["POST"])
 def adm_email_aluno():

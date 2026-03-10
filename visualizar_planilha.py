@@ -60,7 +60,8 @@ TITULOS_CATEGORIA = [
 
 @contextmanager
 def get_db():
-    con = sqlite3.connect(DB_PATH)
+    con = sqlite3.connect(DB_PATH, check_same_thread=False)
+    con.execute("PRAGMA journal_mode=WAL")
     try:
         yield con
         con.commit()
@@ -237,17 +238,22 @@ def remover_materia(aluno_id, materia_id):
 
 def buscar_disciplinas_historico(termo):
     palavras = termo.lower().split()
+    if not palavras:
+        return []
+    primeira = f"%{palavras[0]}%"
     with get_db() as con:
         rows = con.execute(
-            "SELECT turma, disciplina, professor FROM disciplinas_historico ORDER BY turma, disciplina"
+            """SELECT turma, disciplina, professor FROM disciplinas_historico
+               WHERE lower(turma) LIKE ? OR lower(disciplina) LIKE ? OR lower(professor) LIKE ?
+               ORDER BY turma, disciplina LIMIT 200""",
+            (primeira, primeira, primeira)
         ).fetchall()
     resultado = []
     for turma, disciplina, professor in rows:
-        linha = f"{turma} {disciplina} {professor}".lower()
-        if all(p in linha for p in palavras):
+        texto = (turma + " " + disciplina + " " + professor).lower()
+        if all(p in texto for p in palavras):
             resultado.append({"Turma": turma, "Disciplina": disciplina, "Professor": professor})
-    return resultado
-
+    return resultado[:50]
 
 def listar_materias_aluno(aluno_id, dia=None):
     with get_db() as con:

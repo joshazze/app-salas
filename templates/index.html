@@ -27,22 +27,18 @@
         <span class="menu-badge">buscar salas agora</span>
       </li>
       <li class="menu-item" onclick="goto('s-login')">
-        <span class="menu-key">2</span><span class="menu-label">Estou cadastrado</span>
+        <span class="menu-key">2</span><span class="menu-label">Login</span>
         <span class="menu-badge">ver minhas aulas</span>
       </li>
-      <li class="menu-item" onclick="goto('s-cadastro')">
-        <span class="menu-key">3</span><span class="menu-label">Criar cadastro</span>
-        <span class="menu-badge">novo aluno</span>
-      </li>
       <li class="menu-item" onclick="goto('s-sobre')">
-        <span class="menu-key">4</span><span class="menu-label">Sobre o IBSALA</span>
+        <span class="menu-key">3</span><span class="menu-label">Sobre o IBSALA</span>
         <span class="menu-badge">o que e a plataforma</span>
       </li>
-            <li class="menu-item" onclick="goto('s-adm-login')" style="border-color:#1a1a2a">
-        <span class="menu-key" style="color:var(--text-dim)">*</span>
-        <span class="menu-label" style="color:var(--text-dim)">Administrador</span>
-      </li>
     </ul>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn sm" style="flex:1;color:var(--text-dim);border-color:#1e2a38" onclick="goto('s-cadastro')">+ criar cadastro</button>
+      <button class="btn sm" style="color:var(--text-dim);border-color:#1e2a38;min-width:44px" onclick="goto('s-adm-login')" title="Administrador">&#9775;</button>
+    </div>
   </div>
   <div id="s-consulta" class="screen">
     <button class="btn-back" onclick="goto('s-main')">&larr; voltar</button>

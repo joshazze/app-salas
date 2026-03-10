@@ -46,8 +46,11 @@ function mkGroups(rows){
   if(!rows.length)return'<div class="msg warn">Nenhum resultado.</div>';
   const g={};
   rows.forEach(r=>{const k=r.Categoria||'---';(g[k]=g[k]||[]).push(r);});
-  return Object.entries(g).map(([cat,rs])=>
-    `<div class="cat-block"><div class="cat-label">${cat}</div>${mkTable(rs)}</div>`).join('');
+  return Object.entries(g).map(([cat,rs])=>{
+    const label=LABEL_MAP[cat]||cat;
+    const body=cat.startsWith('OUTRAS RESERVAS')?mkOutrasReservas(rs):mkTable(rs);
+    return `<div class="cat-block"><div class="cat-label">${label}</div>${body}</div>`;
+  }).join('');
 }
 function mkPickList(rows,onSelect){
   const ul=document.createElement('ul');ul.className='pick-list';

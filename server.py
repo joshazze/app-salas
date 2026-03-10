@@ -129,6 +129,23 @@ def status():
 
 
 
+@app.route("/api/salas-livres-slots")
+def salas_livres_slots():
+    df_hoje = get_df_hoje()
+    filtro = request.args.get("sala", "").strip().lower()
+    por_slot = vp.listar_salas_livres_por_slot(df_hoje)
+    resultado = {}
+    for slot, salas in por_slot.items():
+        if filtro:
+            salas = [s for s in salas if filtro in s.lower()]
+        resultado[slot] = {
+            "label":  vp.SLOTS[slot]["label"],
+            "total":  len(salas),
+            "salas":  salas,
+        }
+    return jsonify(resultado)
+
+
 @app.route("/api/salas-livres")
 def salas_livres():
     df_hoje = get_df_hoje()

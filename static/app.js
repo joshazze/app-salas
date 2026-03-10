@@ -152,20 +152,40 @@ async function doSalasLivres(){
   const out=document.getElementById('busca-out');
   const horEl=document.getElementById('salas-livre-horario');
   out.innerHTML='<div class="loading">consultando...</div>';
-  const url='/api/salas-livres'+(filtro?`?sala=${encodeURIComponent(filtro)}`:'');
+  const url='/api/salas-livres-slots'+(filtro?`?sala=${encodeURIComponent(filtro)}`:'');
   const d=await api(url);
   if(d.erro){out.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   const agora=new Date();
   const hm=agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
   horEl.textContent=`consulta em ${hm}`;
-  if(!d.salas.length){
-    out.innerHTML='<div class="msg warn">Nenhuma sala livre no momento'+(filtro?` com "${filtro}"`:'')+'.</div>';
-    return;
+  const SLOT_HORA={manha1:'07:30',manha2:'09:50',tarde1:'13:00',tarde2:'14:00',noite1:'18:00',noite2:'19:00'};
+  const agora_min=agora.getHours()*60+agora.getMinutes();
+  const SLOT_INI={manha1:6*60,manha2:9*60+30,tarde1:13*60,tarde2:14*60,noite1:18*60,noite2:19*60};
+  const SLOT_FIM={manha1:9*60+29,manha2:12*60+59,tarde1:13*60+59,tarde2:17*60+59,noite1:18*60+59,noite2:23*60+59};
+  let html='';
+  const ordem=['manha1','manha2','tarde1','tarde2','noite1','noite2'];
+  for(const slot of ordem){
+    const s=d[slot];
+    if(!s)continue;
+    const ativo=agora_min>=SLOT_INI[slot]&&agora_min<=SLOT_FIM[slot];
+    const badge=ativo?`<span style="margin-left:8px;font-size:10px;padding:2px 7px;background:var(--cyan);color:var(--bg);font-weight:bold">AGORA</span>`:'';
+    const chips=s.salas.length
+      ?s.salas.map(r=>`<span style="padding:5px 12px;border:1px solid var(--cyan);color:var(--cyan);font-size:12px;font-weight:bold">${r}</span>`).join('')
+      :`<span style="color:var(--text-dim);font-size:12px">Nenhuma sala livre${filtro?` com "${filtro}"`:''}.</span>`;
+    html+=`<details style="margin-bottom:8px" ${ativo?'open':''}>
+      <summary style="cursor:pointer;list-style:none;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;gap:6px;user-select:none">
+        <span style="color:var(--cyan);font-size:11px">&#9654;</span>
+        <span style="font-weight:bold;font-size:13px;color:var(--text)">${s.label}</span>
+        <span style="font-size:11px;color:var(--text-dim)">${SLOT_HORA[slot]}</span>
+        ${badge}
+        <span style="margin-left:auto;font-size:11px;color:var(--text-dim)">${s.total} livre(s)</span>
+      </summary>
+      <div style="padding:10px 14px;border:1px solid var(--border);border-top:none;display:flex;flex-wrap:wrap;gap:8px;background:var(--bg)">
+        ${chips}
+      </div>
+    </details>`;
   }
-  out.innerHTML=`<div class="msg info" style="margin-bottom:14px">${d.total} sala(s) livre(s) agora${filtro?` — filtro: "${filtro}"`:''}:</div>`
-    +`<div style="display:flex;flex-wrap:wrap;gap:8px">`
-    +d.salas.map(s=>`<span style="padding:6px 14px;border:1px solid var(--cyan);color:var(--cyan);font-size:13px;font-weight:bold">${s}</span>`).join('')
-    +`</div>`;
+  out.innerHTML=(filtro?`<div class="msg info" style="margin-bottom:10px">filtro: "${filtro}"</div>`:'') + html;
 }
 async function doLogin(){
   const un=document.getElementById("login-inp").value.trim().toLowerCase();

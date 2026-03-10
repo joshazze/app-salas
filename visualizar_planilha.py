@@ -307,6 +307,36 @@ def listar_salas_livres(df_hoje, horario_atual=None):
     return [s for s in todas if s not in ocupadas and s != ""]
 
 
+def listar_salas_livres_por_slot(df_hoje):
+    """Retorna dict slot -> [salas livres] para cada um dos 6 slots do dia.
+    Uma sala e considerada ocupada num slot se alguma aula da planilha
+    tiver Horario cujo inicio pertence a esse slot.
+    """
+    col = next((c for c in ["Salas", "Sala"] if c in df_hoje.columns), None)
+
+    # Mapear sala -> conjunto de slots em que ela esta ocupada
+    ocupadas_por_slot = {k: set() for k in SLOTS}
+    if col and "Horario" in df_hoje.columns:
+        for _, row in df_hoje[[col, "Horario"]].dropna().iterrows():
+            sala = str(row[col]).strip()
+            if not sala:
+                continue
+            slot = horario_para_slot(str(row["Horario"]).strip())
+            if slot:
+                ocupadas_por_slot[slot].add(sala)
+
+    with get_db() as con:
+        todas = [r[0] for r in con.execute(
+            "SELECT sala FROM salas_historico ORDER BY sala"
+        ).fetchall()]
+    todas = [s for s in todas if s]
+
+    return {
+        slot: [s for s in todas if s not in ocupadas_por_slot[slot]]
+        for slot in SLOTS
+    }
+
+
 def contar_salas():
     with get_db() as con:
         row = con.execute("SELECT COUNT(*) FROM salas_historico").fetchone()

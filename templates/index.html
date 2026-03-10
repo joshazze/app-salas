@@ -20,6 +20,7 @@
   </header>
   <div id="s-main" class="screen active">
     <p class="stitle">menu principal</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Consulte salas e horarios em tempo real &mdash; sem login. Para receber avisos antes de cada aula, crie um cadastro com seu username e adicione suas materias.</p>
     <ul class="menu">
       <li class="menu-item hl" onclick="goto('s-consulta')">
         <span class="menu-key">1</span><span class="menu-label">Consulta imediata</span>
@@ -46,6 +47,7 @@
   <div id="s-consulta" class="screen">
     <button class="btn-back" onclick="goto('s-main')">&larr; voltar</button>
     <p class="stitle">consulta imediata</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Selecione uma categoria para ver os registros do dia, ou use a <strong style="color:var(--text)">busca livre</strong> para encontrar qualquer disciplina, sala, professor ou turma.</p>
     <ul class="menu" id="cat-menu"></ul>
     <hr>
     <ul class="menu">
@@ -63,6 +65,7 @@
   <div id="s-busca" class="screen">
     <button class="btn-back" onclick="goto('s-consulta')">&larr; voltar</button>
     <p class="stitle">busca livre</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Digite qualquer termo &mdash; disciplina, professor, turma, numero de sala ou horario. Ative o toggle abaixo para ver quais salas estao livres por slot de horario.</p>
     <div id="busca-mode-normal">
       <div class="igroup">
         <span class="iprefix">$</span>
@@ -90,6 +93,7 @@
   <div id="s-login" class="screen">
     <button class="btn-back" onclick="goto('s-main')">&larr; voltar</button>
     <p class="stitle">acesso do aluno</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Digite o username que voce escolheu no cadastro. Nao tem conta ainda? Volte ao menu e escolha <strong style="color:var(--text)">Criar cadastro</strong>.</p>
     <div class="igroup">
       <span class="iprefix">@</span>
       <input type="text" id="login-inp" placeholder="username"
@@ -110,6 +114,7 @@
   <div id="s-aluno" class="screen">
     <button class="btn-back" onclick="doLogout()">&larr; sair</button>
     <p class="stitle" id="s-aluno-title">painel</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Veja suas aulas do dia com sala e horario, consulte todas as materias cadastradas ou ajuste preferencias e notificacoes em Configuracoes.</p>
     <ul class="menu">
       <li class="menu-item hl" onclick="goto('s-hoje')">
         <span class="menu-key">1</span><span class="menu-label">Minhas aulas de hoje</span>
@@ -127,21 +132,26 @@
   <div id="s-hoje" class="screen">
     <button class="btn-back" onclick="goto('s-aluno')">&larr; voltar</button>
     <p class="stitle" id="s-hoje-title">aulas de hoje</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Suas disciplinas que aparecem na planilha oficial de hoje, com sala, horario e professor. Se uma materia nao aparecer, verifique em Configuracoes se ela esta cadastrada com o slot correto.</p>
     <div id="s-hoje-body"></div>
   </div>
   <div id="s-todas" class="screen">
     <button class="btn-back" onclick="goto('s-aluno')">&larr; voltar</button>
     <p class="stitle">todas as materias</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Todas as disciplinas que voce tem cadastradas, com turma, professor e slot. Para adicionar ou remover materias, va em <strong style="color:var(--text)">Configuracoes</strong>.</p>
     <div id="s-todas-body"></div>
   </div>
   <div id="s-ger" class="screen">
     <button class="btn-back" onclick="goto('s-aluno')">&larr; voltar</button>
     <p class="stitle">configuracoes</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Gerencie suas materias, defina o slot de horario de cada disciplina para ativar os avisos por email, e controle suas preferencias de notificacao.</p>
     <div id="email-toggle-box" style="border:1px solid var(--border);background:var(--bg2);padding:12px 16px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;gap:12px"><div><span style="color:var(--text);font-size:13px">Receber emails diarios com salas</span><p style="color:var(--text-dim);font-size:11px;margin-top:2px">Voce recebe um email quando tem aulas no dia</p></div><button id="btn-email-toggle" class="btn sm" onclick="toggleEmail()">...</button></div>
-    <p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">gerenciar materias</p>
+    <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">gerenciar materias</p>
+    <p style="color:var(--text-dim);font-size:11px;margin-bottom:8px;line-height:1.6">Ajuste o slot de cada disciplina clicando no seletor ao lado dela. Disciplinas sem slot nao geram notificacao.</p>
     <div id="s-ger-lista"></div>
     <hr>
-    <p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">adicionar disciplina</p>
+    <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">adicionar disciplina</p>
+    <p style="color:var(--text-dim);font-size:11px;margin-bottom:8px;line-height:1.6">Selecione o dia e o slot, depois busque pelo nome, turma ou professor. O slot precisa corresponder ao turno real da aula na planilha.</p>
     <details style="margin-bottom:10px">
       <summary style="cursor:pointer;font-size:12px;color:var(--cyan);user-select:none;list-style:none">&#9654; ver horarios de cada slot</summary>
       <table class="tbl" style="margin-top:8px;font-size:12px">
@@ -171,8 +181,10 @@
   <div id="s-cadastro" class="screen">
     <button class="btn-back" onclick="cancelCadastro()">&larr; cancelar cadastro</button>
     <p class="stitle">criar cadastro</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Gratuito e rapido. Voce vai escolher um username, informar seu email e adicionar suas materias &mdash; depois recebera um aviso por email <strong style="color:var(--text)">30 minutos antes de cada aula</strong> com a sala exata.</p>
     <div id="cad-p1">
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">escolha um username unico</p>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">passo 1 de 3 &mdash; username</p>
+      <p style="color:var(--text-dim);font-size:11px;margin-bottom:10px;line-height:1.6">Escolha um identificador unico com letras, numeros e underscores (sem espacos). Voce vai usa-lo para entrar toda vez que acessar o IBSALA.</p>
       <div class="igroup">
         <span class="iprefix">@</span>
         <input type="text" id="cad-un" placeholder="username"
@@ -183,19 +195,21 @@
     </div>
     <div id="cad-p2" style="display:none">
       <div class="msg info" id="cad-un-ok"></div>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:6px">email para notificacoes diarias</p>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">passo 2 de 3 &mdash; email</p>
+      <p style="color:var(--text-dim);font-size:11px;margin-bottom:6px;line-height:1.6">Use seu email institucional ou pessoal. Os avisos de aula serao enviados para este endereco. Voce pode desativar as notificacoes a qualquer momento em Configuracoes.</p>
       <div class="igroup" style="margin-bottom:16px">
         <span class="iprefix">@</span>
         <input type="text" id="cad-email" placeholder="seu@email.com"/>
       </div>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:8px">
-        disciplinas selecionadas <span style="color:var(--text-dim)">(salvas apenas ao confirmar)</span>:
-      </p>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">passo 3 de 3 &mdash; suas materias</p>
+      <p style="color:var(--text-dim);font-size:11px;margin-bottom:8px;line-height:1.6">Adicione todas as suas disciplinas. Para cada uma, selecione o <strong style="color:var(--text)">dia</strong> e o <strong style="color:var(--text)">slot de horario</strong> correspondente ao turno real da aula. Sem slot, a disciplina nao gera notificacao.</p>
+      <p style="color:var(--text-muted);font-size:11px;margin-bottom:6px">disciplinas selecionadas <span style="color:var(--text-dim)">(salvas apenas ao confirmar)</span>:</p>
       <ul class="dt-list" id="cad-dt-list">
         <li style="color:var(--text-dim);font-size:12px;padding:5px 0">nenhuma ainda.</li>
       </ul>
       <hr>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">adicionar disciplina</p>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">buscar e adicionar disciplina</p>
+      <p style="color:var(--text-dim);font-size:11px;margin-bottom:8px;line-height:1.6">Nao sabe qual slot? Consulte a tabela abaixo. Selecione o dia, o slot e busque a disciplina pelo nome ou turma.</p>
       <details style="margin-bottom:10px">
       <summary style="cursor:pointer;font-size:12px;color:var(--cyan);user-select:none;list-style:none">&#9654; ver horarios de cada slot</summary>
       <table class="tbl" style="margin-top:8px;font-size:12px">

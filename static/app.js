@@ -784,3 +784,24 @@ async function toggleEmail(){
 init();
 
 document.getElementById("footer-year").textContent=new Date().getFullYear();
+
+// ── Swipe-back (borda esquerda → direita) ─────────────────────────────────
+(function(){
+  const EDGE=30, MIN_DIST=60, MAX_VERT=80;
+  let sx=0,sy=0,tracking=false;
+  document.addEventListener('touchstart',function(e){
+    const t=e.touches[0];
+    tracking=t.clientX<=EDGE;
+    if(tracking){sx=t.clientX;sy=t.clientY;}
+  },{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(!tracking)return;
+    tracking=false;
+    const t=e.changedTouches[0];
+    const dx=t.clientX-sx, dy=Math.abs(t.clientY-sy);
+    if(dx>=MIN_DIST&&dy<=MAX_VERT){
+      const btn=document.querySelector('.screen.active .btn-back');
+      if(btn)btn.click();
+    }
+  },{passive:true});
+})();

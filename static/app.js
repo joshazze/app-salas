@@ -405,6 +405,8 @@ function irCadastro(un){goto('s-cadastro');document.getElementById('cad-un').val
 async function cadCheckUser(){
   const un=document.getElementById("cad-un").value.trim().toLowerCase();
   const msg=document.getElementById('cad-un-msg');if(!un)return;
+  if(!/^[a-z0-9_]+$/.test(un)){msg.innerHTML='<div class="msg error">Username invalido. Use apenas letras, numeros e underscores (sem espacos ou acentos).</div>';return;}
+  if(un.length<3){msg.innerHTML='<div class="msg error">Username muito curto. Minimo 3 caracteres.</div>';return;}
   msg.innerHTML='<div class="loading">verificando...</div>';
   const d=await api('/api/verificar-username',{username:un});
   if(!d.disponivel){msg.innerHTML=`<div class="msg error">username "@${un}" ja esta em uso. Tente outro.</div>`;return;}

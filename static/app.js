@@ -68,12 +68,15 @@ function mkPickList(rows,onSelect){
   return ul;
 }
 async function init(){
-  const d=await api('/api/status');G.statusData=d;if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
+  const d=await api('/api/status');G.statusData=d;
+  if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
+  const _aviso=document.getElementById('main-trava-aviso');
+  if(_aviso)_aviso.style.display=d.travado?'block':'none';
   const meses=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const [,mes,dia2]=d.hoje.split('-');
   const dataFmt=`${parseInt(dia2)} de ${meses[parseInt(mes)-1]}`;
   const _min=d.ultima_captura_min;
-  const _capStr=_min>=0?(_min===0?'agora mesmo':_min===1?'ha 1 min':`ha ${_min} min`):'--';
+  const _capStr=_min>=0?(_min===0?'agora mesmo':_min<60?(_min===1?'ha 1 min':`ha ${_min} min`):(_min<120?'ha 1 h':`ha ${Math.round(_min/60)} h`)):'--';
   const _discStr=d.total>0?` · ${d.total} disc.`:'';
   document.getElementById('hdr-meta').innerHTML=
     `<span class="hl">${d.dia}</span> · <span class="hl">${dataFmt}</span>`
@@ -496,18 +499,20 @@ function admLogout(){
   goto('s-main');
 }
 function admAtualizarBadge(travado){
-  const b=document.getElementById('adm-lock-badge');
-  if(travado){
-    b.textContent='SITE TRAVADO';b.style.color='var(--red)';b.style.borderColor='var(--red)';
-  } else {
-    b.textContent='SITE ABERTO';b.style.color='var(--green)';b.style.borderColor='var(--green)';
-  }
+  const sw=document.getElementById('sw-adm-lock');
+  const lbl=document.getElementById('adm-lock-label');
+  const txt=document.getElementById('adm-status-txt');
+  // switch: ON = aberto (verde), OFF = fechado (vermelho)
+  if(sw){sw.classList.toggle('on',!travado);}
+  if(lbl){lbl.textContent=travado?'fechado':'aberto';lbl.style.color=travado?'var(--red)':'var(--green)';}
+  if(txt){txt.textContent=travado?'site fechado':'site aberto';txt.style.color=travado?'var(--red)':'var(--green)';}
+  // atualizar aviso no menu principal
+  const aviso=document.getElementById('main-trava-aviso');
+  if(aviso)aviso.style.display=travado?'block':'none';
 }
 async function admToggleLock(){
   const d=await api('/api/adm/status-trava',admCreds());
   const novo=!d.travado;
-  const conf=confirm(novo?'Trancar o site? Ninguem tera acesso.':'Destrancar o site?');
-  if(!conf)return;
   await api('/api/adm/trava',{...admCreds(),travado:novo});
   admAtualizarBadge(novo);
 }

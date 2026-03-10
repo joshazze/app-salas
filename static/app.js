@@ -58,7 +58,7 @@ function mkPickList(rows,onSelect){
 async function init(){
   const d=await api('/api/status');G.statusData=d;if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
   document.getElementById('hdr-meta').innerHTML=
-    `<span class="hl">${d.dia}</span> &middot; <span class="hl">${d.hoje}</span> &middot; <span>${d.total} registros hoje</span> &middot; <span>${d.total_alunos} aluno(s)</span> &middot; <span>${d.total_disciplinas} disciplina(s)</span>`;
+    `<span class="hl">${d.dia}</span> &middot; <span class="hl">${d.hoje}</span> &middot; <span>${d.total} capturas de hoje</span> &middot; <span>${d.total_alunos} aluno(s)</span> &middot; <span>${d.total_disciplinas} disciplina(s)</span>`;
   const ul=document.getElementById('cat-menu');
   let idx=1;
   Object.entries(d.categorias).forEach(([cat,n])=>{
@@ -73,7 +73,8 @@ async function loadCat(nome){
   document.getElementById('s-cat-title').textContent=nome.toLowerCase();
   document.getElementById('s-cat-body').innerHTML='<div class="loading">carregando...</div>';
   const d=await api(`/api/categoria/${encodeURIComponent(nome)}`);
-  document.getElementById('s-cat-body').innerHTML=mkTable(d.registros);
+  const sorted=d.registros.slice().sort((a,b)=>(a.Horario||'').localeCompare(b.Horario||''));
+  document.getElementById('s-cat-body').innerHTML=mkTable(sorted);
 }
 async function doBusca(){
   const termo=document.getElementById('busca-inp').value.trim();if(!termo)return;
@@ -150,7 +151,8 @@ async function loadTodas(){
   const d=await api('/api/minhas-materias',{aluno_id:G.alunoId});
   if(!d.materias.length){el.innerHTML='<div class="msg warn">Nenhuma materia.</div>';return;}
   const g={};d.materias.forEach(m=>{(g[m.dia]=g[m.dia]||[]).push(m);});
-  el.innerHTML=Object.entries(g).map(([dia,mats])=>
+  const DIA_ORDER=['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
+  el.innerHTML=Object.entries(g).sort(([a],[b])=>DIA_ORDER.indexOf(a)-DIA_ORDER.indexOf(b)).map(([dia,mats])=>
     `<div class="cat-block"><div class="cat-label">${dia}</div>
     <table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th></tr></thead><tbody>
     ${mats.map(m=>`<tr><td class="c-turma">${m.turma}</td><td>${m.disciplina}</td><td class="c-dim">${m.professor}</td></tr>`).join('')}
@@ -354,9 +356,35 @@ async function discExcluir(id){
 // alunos
 async function loadAdmAlunos(){
   const el=document.getElementById('adm-alunos-body');
-  el.innerHTML='<div class="loading">carregando...</div>';
-  const d=await api('/api/adm/alunos',admCreds());
-  if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhum aluno.</div>';return;}
+  // Inject search bar once
+  if(!document.getElementById('adm-alunos-search')){
+    el.insertAdjacentHTML('beforebegin',
+      `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <div class="igroup" style="flex:1;margin:0">
+          <span class="iprefix">&#128269;</span>
+          <input type="text" id="adm-alunos-search" placeholder="buscar por username ou email..."
+            oninput="debounce(buscarAdmAlunos,350)()" autocomplete="off"/>
+        </div>
+        <button class="btn sm" onclick="buscarAdmAlunos()">buscar</button>
+      </div>
+      <div id="adm-alunos-total" style="font-size:11px;color:var(--text-muted);margin-bottom:6px"></div>`
+    );
+  }
+  el.innerHTML='<div style="color:var(--text-dim);font-size:12px;padding:10px 0">digite para buscar alunos.</div>';
+  document.getElementById('adm-alunos-total').textContent='';
+}
+async function buscarAdmAlunos(){
+  const el=document.getElementById('adm-alunos-body');
+  const termo=document.getElementById('adm-alunos-search')?.value.trim()||'';
+  el.innerHTML='<div class="loading">buscando...</div>';
+  const d=await api('/api/adm/alunos/buscar',{...admCreds(),termo,limite:50});
+  const totalEl=document.getElementById('adm-alunos-total');
+  if(!d.registros||!d.registros.length){
+    el.innerHTML='<div class="msg warn">Nenhum aluno encontrado.</div>';
+    if(totalEl)totalEl.textContent='';
+    return;
+  }
+  if(totalEl)totalEl.textContent=`${d.registros.length} de ${d.total} resultado(s)`;
   let h='<table class="tbl"><thead><tr><th>Username</th><th>Email</th><th>Criado</th><th></th><th></th><th></th></tr></thead><tbody>';
   d.registros.forEach(r=>{
     const bloq=r.bloqueado;
@@ -370,7 +398,7 @@ async function loadAdmAlunos(){
       </td>
       <td><button class="btn sm ${bloq?'danger':''}" onclick="alunoToggleBloqueio(${r.id},${bloq})" title="${bloq?'desbloquear':'bloquear'}">${bloq?'&#128274;':'&#128275;'}</button></td>
       <td><button class="btn sm" onclick="alunoEmailHoje(${r.id},'${r.email}','${r.username}')" title="enviar aulas de hoje">&#9993;</button></td>
-      </tr>`;
+    </tr>`;
   });
   el.innerHTML=h+'</tbody></table>';
 }
@@ -382,19 +410,19 @@ async function alunoAdicionar(){
   const d=await api('/api/adm/alunos/adicionar',{...admCreds(),username:un,email});
   if(d.erro){msg.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   document.getElementById('al-un').value='';document.getElementById('al-email').value='';
-  msg.innerHTML='<div class="msg ok">Aluno adicionado.</div>';loadAdmAlunos();
+  msg.innerHTML='<div class="msg ok">Aluno adicionado.</div>';buscarAdmAlunos();
 }
 async function alunoEditar(id){
   const un=document.getElementById(`al-${id}-un`).value;
   const email=document.getElementById(`al-${id}-email`).value;
   await api('/api/adm/alunos/editar',{...admCreds(),id,username:un,email});
-  loadAdmAlunos();
+  buscarAdmAlunos();
 }
 async function alunoToggleBloqueio(id, bloqueado){
   const acao=bloqueado?'desbloquear':'bloquear';
   if(!confirm(`Deseja ${acao} este aluno?`))return;
   await api('/api/adm/alunos/bloquear',{...admCreds(),id,bloqueado:!bloqueado});
-  loadAdmAlunos();
+  buscarAdmAlunos();
 }
 async function alunoEmailHoje(aluno_id, email, username){
   if(!email){alert('Este aluno nao tem email cadastrado.');return;}
@@ -405,47 +433,57 @@ async function alunoEmailHoje(aluno_id, email, username){
 async function alunoExcluir(id){
   if(!confirm('Excluir aluno e todas as suas materias?'))return;
   await api('/api/adm/alunos/excluir',{...admCreds(),id});
-  loadAdmAlunos();
+  buscarAdmAlunos();
 }
 
-// email
-let admAlunosSel=new Set();
-let _pickAlunos=[];
+// ── Admin email ───────────────────────────────────────────────────────────────
+// Pick list com busca server-side
+let admAlunosSel=new Map(); // email -> {email, username}
+let _pickDebounce=null;
+
 async function loadAdmAlunosPick(){
-  const el=document.getElementById('adm-alunos-pick');
-  const d=await api('/api/adm/alunos',admCreds());
-  if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhum aluno cadastrado.</div>';return;}
-  admAlunosSel=new Set();
-  _pickAlunos=d.registros.filter(r=>r.email);
+  admAlunosSel=new Map();
   document.getElementById('pick-search').value='';
-  renderPick(_pickAlunos);
-}
-function renderPick(lista){
-  const el=document.getElementById('adm-alunos-pick');
-  if(!lista.length){el.innerHTML='<div class="msg warn" style="padding:8px">nenhum resultado.</div>';return;}
-  el.innerHTML=lista.map(r=>`
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:5px 8px;border-bottom:1px solid var(--border);background:${admAlunosSel.has(r.email)?'var(--bg3)':'transparent'};transition:background .1s">
-      <input type="checkbox" data-email="${r.email}" data-username="${encodeURIComponent(r.username)}" onchange="admToggleSel(this)" ${admAlunosSel.has(r.email)?'checked':''} style="accent-color:var(--blue)"/>
-      <span style="color:var(--text);min-width:90px">${r.username}</span>
-      <span style="color:var(--text-muted)">${r.email}</span>
-    </label>`).join('');
   atualizarContador();
+  document.getElementById('adm-alunos-pick').innerHTML=
+    '<div style="color:var(--text-dim);font-size:12px;padding:8px">digite para buscar alunos.</div>';
 }
-function filtrarPick(){
-  const q=document.getElementById('pick-search').value.toLowerCase().trim();
-  const lista=q?_pickAlunos.filter(r=>r.username.toLowerCase().includes(q)||r.email.toLowerCase().includes(q)):_pickAlunos;
-  renderPick(lista);
+async function filtrarPick(){
+  clearTimeout(_pickDebounce);
+  _pickDebounce=setTimeout(async()=>{
+    const q=document.getElementById('pick-search').value.trim();
+    if(q.length<1){
+      document.getElementById('adm-alunos-pick').innerHTML=
+        '<div style="color:var(--text-dim);font-size:12px;padding:8px">digite para buscar alunos.</div>';
+      return;
+    }
+    const el=document.getElementById('adm-alunos-pick');
+    el.innerHTML='<div class="loading" style="padding:6px">buscando...</div>';
+    const d=await api('/api/adm/alunos/buscar',{...admCreds(),termo:q,limite:50});
+    const lista=(d.registros||[]).filter(r=>r.email);
+    if(!lista.length){el.innerHTML='<div class="msg warn" style="padding:8px">nenhum resultado.</div>';return;}
+    el.innerHTML=lista.map(r=>`
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:5px 8px;border-bottom:1px solid var(--border);background:${admAlunosSel.has(r.email)?'var(--bg3)':'transparent'};transition:background .1s">
+        <input type="checkbox" data-email="${r.email}" data-username="${encodeURIComponent(r.username)}" onchange="admToggleSel(this)" ${admAlunosSel.has(r.email)?'checked':''} style="accent-color:var(--blue)"/>
+        <span style="color:var(--text);min-width:90px">${r.username}</span>
+        <span style="color:var(--text-muted)">${r.email}</span>
+      </label>`).join('');
+    atualizarContador();
+  },300);
 }
 function admToggleSel(cb){
   const email=cb.dataset.email;
-  if(cb.checked)admAlunosSel.add(email);
+  const username=decodeURIComponent(cb.dataset.username||'');
+  if(cb.checked)admAlunosSel.set(email,{email,username});
   else admAlunosSel.delete(email);
   cb.closest('label').style.background=cb.checked?'var(--bg3)':'transparent';
   atualizarContador();
 }
 function selecionarVisiveis(){
   document.querySelectorAll('#adm-alunos-pick input[type=checkbox]').forEach(cb=>{
-    cb.checked=true;admAlunosSel.add(cb.dataset.email);
+    const email=cb.dataset.email;
+    const username=decodeURIComponent(cb.dataset.username||'');
+    cb.checked=true;admAlunosSel.set(email,{email,username});
     cb.closest('label').style.background='var(--bg3)';
   });
   atualizarContador();
@@ -458,7 +496,9 @@ function limparSelecao(){
   atualizarContador();
 }
 function atualizarContador(){
-  document.getElementById('pick-counter').textContent=`${admAlunosSel.size} selecionado(s)`;
+  const n=admAlunosSel.size;
+  const el=document.getElementById('pick-counter');
+  if(el)el.innerHTML=n?`<span style="color:var(--cyan)">${n} selecionado(s)</span> &mdash; <button class="btn sm danger" onclick="limparSelecao()" style="padding:1px 7px">limpar</button>`:'0 selecionado(s)';
 }
 async function emailTodos(){
   const msg=document.getElementById('email-todos-msg');
@@ -477,34 +517,78 @@ async function emailCustom(){
   const assunto=document.getElementById('email-assunto').value.trim();
   const mensagem=document.getElementById('email-msg').value.trim();
   const msg=document.getElementById('email-custom-msg');
-  const destinatarios=[..._pickAlunos.filter(r=>admAlunosSel.has(r.email))];
+  const destinatarios=[...admAlunosSel.values()];
   if(!assunto||!mensagem){msg.innerHTML='<div class="msg error">Assunto e mensagem obrigatorios.</div>';return;}
   if(!destinatarios.length){msg.innerHTML='<div class="msg error">Selecione ao menos um destinatario.</div>';return;}
   msg.innerHTML='<div class="loading">enviando...</div>';
   const d=await api('/api/adm/email/custom',{...admCreds(),assunto,mensagem,destinatarios});
-  msg.innerHTML=`<div class="msg ok">${d.enviados} enviado(s), ${d.erros} erro(s).</div>`;
+  msg.innerHTML=`<div class="msg ok">Envio de ${d.total} iniciado em background.</div>`;
 }
 
+// ── Teste de email com busca ──────────────────────────────────────────────────
+let _testeAlunos=[];
+let _testeDebounce=null;
+let _testeSel=null; // {id, username, email}
+
 async function loadTesteAlunos(){
-  const sel=document.getElementById('teste-aluno-sel');
-  if(!sel)return;
-  const d=await api('/api/adm/alunos',admCreds());
-  sel.innerHTML='';
-  d.registros.forEach(r=>{
-    if(!r.email)return;
-    const op=document.createElement('option');
-    op.value=r.id;op.textContent=`${r.username} <${r.email}>`;
-    sel.appendChild(op);
-  });
+  _testeAlunos=[];_testeSel=null;
+  const wrap=document.getElementById('teste-aluno-wrap');
+  if(!wrap)return;
+  wrap.innerHTML=`
+    <div style="position:relative;flex:1;min-width:180px">
+      <div class="igroup" style="margin:0">
+        <span class="iprefix">@</span>
+        <input type="text" id="teste-search" placeholder="buscar aluno..." autocomplete="off"
+          oninput="debounce(buscaTeste,350)()" onfocus="buscaTeste()"
+          style="flex:1"/>
+      </div>
+      <div id="teste-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;
+        background:var(--bg2);border:1px solid var(--cyan);max-height:200px;overflow-y:auto"></div>
+    </div>
+    <div id="teste-sel-badge" style="font-size:11px;color:var(--text-dim);align-self:center"></div>`;
 }
+async function buscaTeste(){
+  const inp=document.getElementById('teste-search');
+  const sug=document.getElementById('teste-suggestions');
+  if(!inp||!sug)return;
+  const q=inp.value.trim();
+  const d=await api('/api/adm/alunos/buscar',{...admCreds(),termo:q,limite:20});
+  const lista=(d.registros||[]).filter(r=>r.email);
+  if(!lista.length){sug.style.display='none';return;}
+  sug.style.display='block';
+  sug.innerHTML=lista.map(r=>`
+    <div onclick="selecionarTestAluno(${r.id},'${r.username}','${r.email}')"
+      style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);
+      display:flex;gap:8px;align-items:center" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      <span style="color:var(--text);min-width:80px">${r.username}</span>
+      <span style="color:var(--text-muted)">${r.email}</span>
+    </div>`).join('');
+}
+function selecionarTestAluno(id,username,email){
+  _testeSel={id,username,email};
+  const inp=document.getElementById('teste-search');
+  const sug=document.getElementById('teste-suggestions');
+  const badge=document.getElementById('teste-sel-badge');
+  if(inp)inp.value=username;
+  if(sug)sug.style.display='none';
+  if(badge)badge.innerHTML=`&#10003; <span style="color:var(--cyan)">${username}</span> &lt;${email}&gt;`;
+}
+document.addEventListener('click',e=>{
+  const sug=document.getElementById('teste-suggestions');
+  if(sug&&!sug.contains(e.target)&&e.target.id!=='teste-search')sug.style.display='none';
+});
 async function emailTeste(){
   const msg=document.getElementById('email-teste-msg');
-  const sel=document.getElementById('teste-aluno-sel');
-  const aluno_id=sel?sel.value:null;
+  if(!_testeSel){msg.innerHTML='<div class="msg error">Selecione um aluno.</div>';return;}
   msg.innerHTML='<div class="loading">enviando...</div>';
-  const d=await api('/api/adm/email/teste',{...admCreds(),aluno_id});
+  const d=await api('/api/adm/email/teste',{...admCreds(),aluno_id:_testeSel.id});
   if(d.erro){msg.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   msg.innerHTML=`<div class="msg ok">&#10003; Enviado para ${d.enviado_para}</div>`;
+}
+
+// Debounce helper
+function debounce(fn,ms){
+  let t;return function(...args){clearTimeout(t);t=setTimeout(()=>fn(...args),ms);}
 }
 
 

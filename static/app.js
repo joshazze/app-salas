@@ -12,8 +12,16 @@ function goto(id){
 async function api(url,body){
   const o={headers:{'Content-Type':'application/json'}};
   if(body){o.method='POST';o.body=JSON.stringify(body);}
-  return(await fetch(url,o)).json();
+  try{
+    const r=await fetch(url,o);
+    if(!r.ok)return{erro:`Erro HTTP ${r.status}`};
+    return await r.json();
+  }catch(e){
+    console.error('api error',url,e);
+    return{erro:'Falha de conexao com o servidor.'};
+  }
 }
+const SLOT_LABELS={manha1:"Manha 1",manha2:"Manha 2",tarde1:"Tarde 1",tarde2:"Tarde 2",noite1:"Noite 1",noite2:"Noite 2"};
 const COL_CLS={Sala:'c-sala',Horario:'c-hora',Turma:'c-turma',Categoria:'c-dim',Professor:'c-dim',Data:'c-hora',Dia:'c-dim'};
 const SKIP_COLS=new Set(['Categoria','Salas','DATA','Sala','Data','Descricao','Responsavel']);
 function normalizeRow(r){
@@ -70,27 +78,93 @@ async function init(){
     +` · <span>${d.total_alunos} alunos ativos</span>`;
   const ul=document.getElementById('cat-menu');
   let idx=1;
-  Object.entries(d.categorias).forEach(([cat,n])=>{
+  d.categorias.forEach(([cat,n])=>{
     if(n===0)return;
     const li=document.createElement('li');li.className='menu-item';
-    li.innerHTML=`<span class="menu-key">${idx++}</span><span class="menu-label">${cat}</span><span class="menu-badge">${n} registros</span>`;
+    const label=LABEL_MAP[cat]||cat;
+    li.innerHTML=`<span class="menu-key">${idx++}</span><span class="menu-label">${label}</span><span class="menu-badge">${n} registros</span>`;
     li.onclick=()=>loadCat(cat);ul.appendChild(li);
   });
 }
+const LABEL_MAP={'OUTRAS RESERVAS - NOITE':'OUTRAS RESERVAS'};
 async function loadCat(nome){
   goto('s-cat');
-  document.getElementById('s-cat-title').textContent=nome.toLowerCase();
+  const label=LABEL_MAP[nome]||nome;
+  document.getElementById('s-cat-title').textContent=label.toLowerCase();
   document.getElementById('s-cat-body').innerHTML='<div class="loading">carregando...</div>';
   const d=await api(`/api/categoria/${encodeURIComponent(nome)}`);
+  if(d.erro){document.getElementById('s-cat-body').innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   const sorted=d.registros.slice().sort((a,b)=>(a.Horario||'').localeCompare(b.Horario||''));
-  document.getElementById('s-cat-body').innerHTML=mkTable(sorted);
+  const isOutras=nome.startsWith('OUTRAS RESERVAS');
+  document.getElementById('s-cat-body').innerHTML=isOutras?mkOutrasReservas(sorted):mkTable(sorted);
+}
+
+function mkOutrasReservas(rows){
+  if(!rows.length)return'<div class="msg warn">Nenhum resultado.</div>';
+  let h='<table class="tbl"><thead><tr>'
+    +'<th>Horario</th><th>Descricao</th><th>Responsavel</th><th>Sala</th><th>Data</th>'
+    +'</tr></thead><tbody>';
+  rows.forEach(r=>{
+    const sala=r.Sala||r.Salas||'';
+    const data=r.Data||r.DATA||'';
+    const desc=r.Descricao||'';
+    const resp=r.Responsavel||'';
+    const hora=r.Horario||'';
+    h+=`<tr>
+      <td class="c-hora">${hora}</td>
+      <td>${desc}</td>
+      <td class="c-dim">${resp}</td>
+      <td class="c-sala">${sala}</td>
+      <td class="c-hora">${data}</td>
+    </tr>`;
+  });
+  return h+'</tbody></table>';
 }
 async function doBusca(){
   const termo=document.getElementById('busca-inp').value.trim();if(!termo)return;
   const out=document.getElementById('busca-out');
   out.innerHTML='<div class="loading">buscando...</div>';
   const d=await api('/api/buscar',{termo});
+  if(d.erro){out.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   out.innerHTML=`<div class="msg info" style="margin-bottom:14px">"${termo}" &mdash; ${d.total} resultado(s)</div>`+mkGroups(d.registros);
+}
+
+let _modoLivre=false;
+function toggleModoLivre(){
+  _modoLivre=!_modoLivre;
+  document.getElementById('busca-mode-normal').style.display=_modoLivre?'none':'block';
+  document.getElementById('busca-mode-livre').style.display=_modoLivre?'block':'none';
+  const btn=document.getElementById('btn-toggle-livre');
+  btn.classList.toggle('primary',_modoLivre);
+  btn.innerHTML=_modoLivre?'&#10005; voltar para busca livre':'&#9632; ver salas livres agora';
+  document.getElementById('busca-out').innerHTML='';
+  document.getElementById('salas-livre-horario').textContent='';
+  if(_modoLivre){
+    document.getElementById('sala-livre-inp').value='';
+    doSalasLivres();
+  }
+}
+
+async function doSalasLivres(){
+  if(!_modoLivre)return;
+  const filtro=document.getElementById('sala-livre-inp').value.trim();
+  const out=document.getElementById('busca-out');
+  const horEl=document.getElementById('salas-livre-horario');
+  out.innerHTML='<div class="loading">consultando...</div>';
+  const url='/api/salas-livres'+(filtro?`?sala=${encodeURIComponent(filtro)}`:'');
+  const d=await api(url);
+  if(d.erro){out.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
+  const agora=new Date();
+  const hm=agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
+  horEl.textContent=`consulta em ${hm}`;
+  if(!d.salas.length){
+    out.innerHTML='<div class="msg warn">Nenhuma sala livre no momento'+(filtro?` com "${filtro}"`:'')+'.</div>';
+    return;
+  }
+  out.innerHTML=`<div class="msg info" style="margin-bottom:14px">${d.total} sala(s) livre(s) agora${filtro?` — filtro: "${filtro}"`:''}:</div>`
+    +`<div style="display:flex;flex-wrap:wrap;gap:8px">`
+    +d.salas.map(s=>`<span style="padding:6px 14px;border:1px solid var(--cyan);color:var(--cyan);font-size:13px;font-weight:bold">${s}</span>`).join('')
+    +`</div>`;
 }
 async function doLogin(){
   const un=document.getElementById("login-inp").value.trim().toLowerCase();
@@ -163,8 +237,8 @@ async function loadTodas(){
   const DIA_ORDER=['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
   el.innerHTML=Object.entries(g).sort(([a],[b])=>DIA_ORDER.indexOf(a)-DIA_ORDER.indexOf(b)).map(([dia,mats])=>
     `<div class="cat-block"><div class="cat-label">${dia}</div>
-    <table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th></tr></thead><tbody>
-    ${mats.map(m=>`<tr><td class="c-turma">${m.turma}</td><td>${m.disciplina}</td><td class="c-dim">${m.professor}</td></tr>`).join('')}
+    <table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Slot</th></tr></thead><tbody>
+    ${mats.map(m=>`<tr><td class="c-turma">${m.turma}</td><td>${m.disciplina}</td><td class="c-dim">${m.professor}</td><td class="c-hora">${SLOT_LABELS[m.slot]||'—'}</td></tr>`).join('')}
     </tbody></table></div>`).join('');
 }
 async function loadGer(){
@@ -172,14 +246,16 @@ async function loadGer(){
   el.innerHTML='<div class="loading">carregando...</div>';
   const d=await api('/api/minhas-materias',{aluno_id:G.alunoId});
   if(!d.materias.length){el.innerHTML='<div class="msg warn" style="margin-bottom:0">Nenhuma materia.</div>';return;}
-  el.innerHTML=`<table class="tbl"><thead><tr><th>Dia</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead><tbody>`+
+  el.innerHTML=`<table class="tbl"><thead><tr><th>Dia</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Slot</th><th></th></tr></thead><tbody>`+
   d.materias.map(m=>`<tr>
     <td class="c-hora">${m.dia}</td><td class="c-turma">${m.turma}</td>
     <td>${m.disciplina}</td><td class="c-dim">${m.professor}</td>
+    <td class="c-hora">${SLOT_LABELS[m.slot]||'—'}</td>
     <td><button class="btn danger sm" onclick="rmMateria(${m.id})">rm</button></td>
   </tr>`).join('')+'</tbody></table>';
 }
 async function rmMateria(id){
+  if(!confirm('Remover esta materia?'))return;
   await api('/api/remover-materia',{aluno_id:G.alunoId,materia_id:id});loadGer();
 }
 async function gerBuscar(){
@@ -191,7 +267,9 @@ async function gerBuscar(){
   el.replaceChildren(mkPickList(d.registros,async row=>{
     const dia=document.getElementById('ger-dia').value;
     if(!dia){alert('Selecione o dia primeiro.');return;}
-    await api('/api/adicionar-materia',{aluno_id:G.alunoId,dia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor});
+    const gerSlot=document.getElementById('ger-slot').value;
+    if(!gerSlot){alert('Selecione o slot (horario) primeiro.');return;}
+    await api('/api/adicionar-materia',{aluno_id:G.alunoId,dia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor,slot:gerSlot});
     el.innerHTML=`<div class="msg ok">Adicionada: ${row.Disciplina} (${dia})</div>`;
     document.getElementById('ger-inp').value='';loadGer();
   }));
@@ -224,6 +302,7 @@ function renderDtList(){
   if(!G.cadMats.length){ul.innerHTML='<li style="color:var(--text-dim);font-size:12px;padding:5px 0">nenhuma ainda.</li>';return;}
   ul.innerHTML=G.cadMats.map((m,i)=>`<li class="dt-item">
     <span class="dt-dia">${m.dia}</span><span class="dt-disc">${m.disciplina}</span>
+    <span class="c-hora" style="font-size:11px;margin-left:6px">${SLOT_LABELS[m.slot]||''}</span>
     <button class="dt-rm" onclick="cadRm(${i})">&#10005;</button></li>`).join('');
 }
 function cadRm(i){G.cadMats.splice(i,1);renderDtList();}
@@ -236,9 +315,11 @@ async function cadBuscar(){
   el.replaceChildren(mkPickList(d.registros,row=>{
     const dia=document.getElementById('cad-dia').value;
     if(!dia){alert('Selecione o dia primeiro.');return;}
+    const cadSlot=document.getElementById('cad-slot').value;
+    if(!cadSlot){el.innerHTML='<div class="msg warn">Selecione o slot (horario) antes de adicionar.</div>';return;}
     const dup=G.cadMats.some(m=>m.dia===dia&&m.disciplina===row.Disciplina&&m.turma===row.Turma);
     if(dup){el.innerHTML='<div class="msg warn">Ja adicionada.</div>';return;}
-    G.cadMats.push({dia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor});
+    G.cadMats.push({dia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor,slot:cadSlot});
     renderDtList();
     el.innerHTML=`<div class="msg ok">Adicionada: ${row.Disciplina} (${dia})</div>`;
     document.getElementById('cad-inp').value='';
@@ -281,7 +362,7 @@ function admStep1(){
 }
 async function admLogin(){
   const pw=document.getElementById('adm-pw').value;
-  ADM.pass=pw.toLowerCase();
+  ADM.pass=pw;
   const d=await api('/api/adm/login',{adm_user:ADM.user,adm_pass:ADM.pass});
   if(!d.ok){
     document.getElementById('adm-step2-msg').innerHTML='<div class="msg error">credenciais incorretas.</div>';
@@ -406,7 +487,7 @@ async function buscarAdmAlunos(){
         <button class="btn danger sm" onclick="alunoExcluir(${r.id})">rm</button>
       </td>
       <td><button class="btn sm ${bloq?'danger':''}" onclick="alunoToggleBloqueio(${r.id},${bloq})" title="${bloq?'desbloquear':'bloquear'}">${bloq?'&#128274;':'&#128275;'}</button></td>
-      <td><button class="btn sm" onclick="alunoEmailHoje(${r.id},'${r.email}','${r.username}')" title="enviar aulas de hoje">&#9993;</button></td>
+      <td><button class="btn sm" data-aid="${r.id}" data-email="${r.email.replace('"','&quot;')}" data-uname="${r.username.replace('"','&quot;')}" onclick="alunoEmailHoje(this)" title="enviar aulas de hoje">&#9993;</button></td>
     </tr>`;
   });
   el.innerHTML=h+'</tbody></table>';
@@ -433,7 +514,8 @@ async function alunoToggleBloqueio(id, bloqueado){
   await api('/api/adm/alunos/bloquear',{...admCreds(),id,bloqueado:!bloqueado});
   buscarAdmAlunos();
 }
-async function alunoEmailHoje(aluno_id, email, username){
+async function alunoEmailHoje(btn){
+  const aluno_id=btn.dataset.aid,email=btn.dataset.email,username=btn.dataset.uname;
   if(!email){alert('Este aluno nao tem email cadastrado.');return;}
   const d=await api('/api/adm/email/aluno',{...admCreds(),aluno_id});
   if(d.ok) alert('Email enviado para '+email);
@@ -512,13 +594,7 @@ function atualizarContador(){
   if(!chips)return;
   if(!n){chips.style.display='none';chips.innerHTML='';return;}
   chips.style.display='flex';
-  chips.innerHTML=[...admAlunosSel.values()].map(u=>
-    `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;"
-    +`background:var(--bg3);border:1px solid var(--cyan);font-size:11px;color:var(--cyan)">"
-    +`@${u.username}"
-    +`<button onclick="removerChip('${u.email}')" style="background:none;border:none;color:var(--red);"
-    +`cursor:pointer;font-size:12px;padding:0 2px;line-height:1">&#10005;</button></span>`
-  ).join('');
+  chips.innerHTML=[...admAlunosSel.values()].map(u=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--bg3);border:1px solid var(--cyan);font-size:11px;color:var(--cyan)">@${u.username}<button onclick="removerChip('${u.email}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px;padding:0 2px;line-height:1">&#10005;</button></span>`).join('');
 }
 function removerChip(email){
   admAlunosSel.delete(email);
@@ -583,14 +659,15 @@ async function buscaTeste(){
   if(!lista.length){sug.style.display='none';return;}
   sug.style.display='block';
   sug.innerHTML=lista.map(r=>`
-    <div onclick="selecionarTestAluno(${r.id},'${r.username}','${r.email}')"
+    <div data-id="${r.id}" data-username="${encodeURIComponent(r.username)}" data-email="${encodeURIComponent(r.email)}" onclick="selecionarTestAluno(this)"
       style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);
       display:flex;gap:10px;align-items:center" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
       <span style="color:var(--text);min-width:90px;font-weight:bold">@${r.username}</span>
       <span style="color:var(--text-muted)">${r.email}</span>
     </div>`).join('');
 }
-function selecionarTestAluno(id,username,email){
+function selecionarTestAluno(el){
+  const id=el.dataset.id,username=decodeURIComponent(el.dataset.username||''),email=decodeURIComponent(el.dataset.email||'');
   _testeSel={id,username,email};
   const inp=document.getElementById('teste-search');
   const sug=document.getElementById('teste-suggestions');

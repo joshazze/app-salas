@@ -39,8 +39,10 @@ def set_trava(estado):
 
 
 def check_adm(data):
+    if not ADM_PASSWORD:
+        return False
     return (data.get("adm_user","").lower() == ADM_USERNAME.lower() and
-            data.get("adm_pass","").lower() == ADM_PASSWORD.lower())
+            data.get("adm_pass","") == ADM_PASSWORD)
 
 
 @app.before_request
@@ -57,20 +59,23 @@ def verificar_trava():
 
 _df = None
 _df_data = None
+_df_lock = threading.Lock()
 
 
 def get_df():
     global _df, _df_data
     hoje = vp._hoje()
-    # Invalida cache se virou o dia
-    if _df is None or _df_data != hoje:
-        _df_data = hoje
-        if vp.csv_hoje_existe():
-            _df = vp.carregar_do_cache()
-        else:
-            df_bruto = vp.buscar_planilha_remota()
-            _df = vp.parsear_e_organizar(df_bruto)
-            vp.salvar_csv(_df)
+    if _df is not None and _df_data == hoje:
+        return _df
+    with _df_lock:
+        if _df is None or _df_data != hoje:
+            _df_data = hoje
+            if vp.csv_hoje_existe():
+                _df = vp.carregar_do_cache()
+            else:
+                df_bruto = vp.buscar_planilha_remota()
+                _df = vp.parsear_e_organizar(df_bruto)
+                vp.salvar_csv(_df)
     return _df
 
 
@@ -101,7 +106,7 @@ def index():
 @app.route("/api/status")
 def status():
     df_hoje = get_df_hoje()
-    resumo = {cat: int(len(df_hoje[df_hoje["Categoria"] == cat])) for cat in vp.TITULOS_CATEGORIA}
+    resumo = [[cat, int(len(df_hoje[df_hoje["Categoria"] == cat]))] for cat in vp.TITULOS_CATEGORIA]
     import os as _os
     csv_path = vp._csv_hoje()
     try:
@@ -121,6 +126,17 @@ def status():
         "categorias":   resumo,
         "travado":      site_travado(),
     })
+
+
+
+@app.route("/api/salas-livres")
+def salas_livres():
+    df_hoje = get_df_hoje()
+    livres = vp.listar_salas_livres(df_hoje)
+    sala_filtro = request.args.get("sala", "").strip().lower()
+    if sala_filtro:
+        livres = [s for s in livres if sala_filtro in s.lower()]
+    return jsonify({"total": len(livres), "salas": livres})
 
 
 @app.route("/api/buscar", methods=["POST"])
@@ -166,7 +182,7 @@ def aulas_hoje():
     materias = vp.listar_materias_aluno(aluno_id, dia=vp._dia_pt())
     resultado = []
 
-    for _, dia, turma, disciplina, professor in materias:
+    for _, dia, turma, disciplina, professor, slot in materias:
         linhas = vp.filtrar_df(df, f"{turma} {disciplina}")
         if linhas.empty:
             linhas = vp.filtrar_df(df, " ".join(disciplina.split()[:3]))
@@ -187,7 +203,7 @@ def minhas_materias():
         return jsonify({"erro": "aluno_id ausente"}), 400
     rows = vp.listar_materias_aluno(aluno_id)
     materias = [{"id": r[0], "dia": r[1], "turma": r[2],
-                 "disciplina": r[3], "professor": r[4]} for r in rows]
+                 "disciplina": r[3], "professor": r[4], "slot": r[5]} for r in rows]
     return jsonify({"materias": materias})
 
 
@@ -210,7 +226,7 @@ def cadastrar():
     receber_email = data.get("receber_email", True)
     aluno_id = vp.criar_aluno(username, email, receber_email=receber_email)
     for m in materias:
-        vp.salvar_materia(aluno_id, m["dia"], m["turma"], m["disciplina"], m["professor"])
+        vp.salvar_materia(aluno_id, m["dia"], m["turma"], m["disciplina"], m["professor"], m.get("slot"))
 
     threading.Thread(target=vp.email_boas_vindas, args=(username, email, materias), daemon=True).start()
 
@@ -221,15 +237,26 @@ def cadastrar():
 @app.route("/api/adicionar-materia", methods=["POST"])
 def adicionar_materia():
     data = request.json or {}
-    vp.salvar_materia(data["aluno_id"], data["dia"], data["turma"],
-                      data["disciplina"], data["professor"])
+    aluno_id   = data.get("aluno_id")
+    dia        = data.get("dia", "").strip()
+    turma      = data.get("turma", "").strip()
+    disciplina = data.get("disciplina", "").strip()
+    professor  = data.get("professor", "").strip()
+    slot       = data.get("slot") or None
+    if not all([aluno_id, dia, turma, disciplina, professor]):
+        return jsonify({"erro": "Campos obrigatorios ausentes"}), 400
+    vp.salvar_materia(aluno_id, dia, turma, disciplina, professor, slot)
     return jsonify({"ok": True})
 
 
 @app.route("/api/remover-materia", methods=["POST"])
 def remover_materia():
     data = request.json or {}
-    vp.remover_materia(data["aluno_id"], data["materia_id"])
+    aluno_id   = data.get("aluno_id")
+    materia_id = data.get("materia_id")
+    if not aluno_id or not materia_id:
+        return jsonify({"erro": "aluno_id e materia_id obrigatorios"}), 400
+    vp.remover_materia(aluno_id, materia_id)
     return jsonify({"ok": True})
 
 
@@ -443,7 +470,6 @@ def adm_email_custom():
         return jsonify({"erro": "Campos incompletos"}), 400
 
     mensagem_safe = html_lib.escape(mensagem).replace("\n", "<br>")
-    mensagem_safe_already_set = True  # set above
     content = (
         f"<div style='white-space:pre-wrap;font-size:14px;color:#1a1a1a;line-height:1.7'>{mensagem_safe}</div>"
         "<p style='margin:16px 0 0;font-size:11px;color:#888'>"
@@ -485,7 +511,7 @@ def adm_email_aluno():
     df = get_df_hoje()
     materias = vp.listar_materias_aluno(aluno_id, dia=vp._dia_pt())
     aulas = []
-    for _, dia, turma, disciplina, professor in materias:
+    for _, dia, turma, disciplina, professor, slot in materias:
         linhas = vp.filtrar_df(df, f"{turma} {disciplina}")
         if linhas.empty:
             linhas = vp.filtrar_df(df, " ".join(disciplina.split()[:3]))
@@ -537,9 +563,7 @@ def adm_email_teste():
         row = vp.buscar_aluno_por_id(aluno_id_param)
         if not row:
             return jsonify({"erro": "Usuario nao encontrado"}), 404
-        username_row = vp.buscar_aluno_por_id(aluno_id_param)
-        _, email = username_row
-        # pega username
+        _, email = row
         with vp.get_db() as con:
             r = con.execute("SELECT username FROM alunos WHERE id=?", (aluno_id_param,)).fetchone()
         username = r[0] if r else "usuario"
@@ -553,6 +577,8 @@ def adm_email_teste():
         if not row:
             return jsonify({"erro": "Dados do usuario nao encontrados"}), 404
         _, email = row
+
+    materias = vp.listar_materias_aluno(aluno_id)
 
     horarios = [
         ("07:10", "07:50"), ("09:30", "10:10"),

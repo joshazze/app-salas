@@ -63,11 +63,24 @@
   <div id="s-busca" class="screen">
     <button class="btn-back" onclick="goto('s-consulta')">&larr; voltar</button>
     <p class="stitle">busca livre</p>
-    <div class="igroup">
-      <span class="iprefix">$</span>
-      <input type="text" id="busca-inp" placeholder="ex: osmar estrutura  /  1 arq  /  sala 204  /  07:30"
-             onkeydown="if(event.key==='Enter')doBusca()"/>
-      <button class="btn primary" onclick="doBusca()">buscar</button>
+    <div id="busca-mode-normal">
+      <div class="igroup">
+        <span class="iprefix">$</span>
+        <input type="text" id="busca-inp" placeholder="professor, disciplina, turma, horario, etc."
+               onkeydown="if(event.key==='Enter')doBusca()"/>
+        <button class="btn primary" onclick="doBusca()">buscar</button>
+      </div>
+    </div>
+    <div id="busca-mode-livre" style="display:none">
+      <div class="igroup">
+        <span class="iprefix">&#9632;</span>
+        <input type="text" id="sala-livre-inp" placeholder="numero da sala (ex: 204, 2A1...)"
+               oninput="doSalasLivres()" onkeydown="if(event.key==='Enter')doSalasLivres()"/>
+      </div>
+    </div>
+    <div style="margin:10px 0 4px;display:flex;gap:8px;align-items:center">
+      <button id="btn-toggle-livre" class="btn sm" onclick="toggleModoLivre()">&#9632; ver salas livres agora</button>
+      <span id="salas-livre-horario" style="font-size:11px;color:var(--text-muted)"></span>
     </div>
     <div id="busca-out"></div>
   </div>
@@ -131,6 +144,7 @@
         <option>SEGUNDA</option><option>TERCA</option><option>QUARTA</option>
         <option>QUINTA</option><option>SEXTA</option><option>SABADO</option>
       </select>
+      <select id="ger-slot"><option value="">-- slot --</option><option value="manha1">Manha 1 (07:30)</option><option value="manha2">Manha 2 (09:50+)</option><option value="tarde1">Tarde 1 (13:00)</option><option value="tarde2">Tarde 2 (14:00+)</option><option value="noite1">Noite 1 (18:00)</option><option value="noite2">Noite 2 (19:00+)</option></select>
       <input type="text" id="ger-inp" placeholder="buscar disciplina..."
              onkeydown="if(event.key==='Enter')gerBuscar()"/>
       <button class="btn" onclick="gerBuscar()">buscar</button>
@@ -170,6 +184,7 @@
           <option>SEGUNDA</option><option>TERCA</option><option>QUARTA</option>
           <option>QUINTA</option><option>SEXTA</option><option>SABADO</option>
         </select>
+        <select id="cad-slot"><option value="">-- slot --</option><option value="manha1">Manha 1 (07:30)</option><option value="manha2">Manha 2 (09:50+)</option><option value="tarde1">Tarde 1 (13:00)</option><option value="tarde2">Tarde 2 (14:00+)</option><option value="noite1">Noite 1 (18:00)</option><option value="noite2">Noite 2 (19:00+)</option></select>
         <input type="text" id="cad-inp" placeholder="buscar disciplina..."
                onkeydown="if(event.key==='Enter')cadBuscar()"/>
         <button class="btn" onclick="cadBuscar()">buscar</button>

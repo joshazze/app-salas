@@ -55,6 +55,16 @@ TITULOS_CATEGORIA = [
     "OUTRAS RESERVAS - NOITE",
 ]
 
+# Faixas de horario para notificacao por slot (limites em minutos a partir de 00:00)
+SLOTS = {
+    "manha1": {"label": "Manha 1",  "inicio": (6,  0), "fim": (9, 29)},
+    "manha2": {"label": "Manha 2",  "inicio": (9, 30), "fim": (12, 59)},
+    "tarde1": {"label": "Tarde 1",  "inicio": (13, 0), "fim": (13, 59)},
+    "tarde2": {"label": "Tarde 2",  "inicio": (14, 0), "fim": (17, 59)},
+    "noite1": {"label": "Noite 1",  "inicio": (18, 0), "fim": (18, 59)},
+    "noite2": {"label": "Noite 2",  "inicio": (19, 0), "fim": (23, 59)},
+}
+
 
 # ── Banco de dados ────────────────────────────────────────────────────────────
 
@@ -67,6 +77,24 @@ def get_db():
         con.commit()
     finally:
         con.close()
+
+
+def horario_para_slot(horario_str):
+    """Dado '07:30/09:20', retorna a chave do slot correspondente ao horario de inicio."""
+    if not horario_str or not isinstance(horario_str, str):
+        return None
+    try:
+        inicio = horario_str.split("/")[0].strip()
+        h, m = map(int, inicio.split(":"))
+        total = h * 60 + m
+        for slot_key, slot in SLOTS.items():
+            ini_min = slot["inicio"][0] * 60 + slot["inicio"][1]
+            fim_min = slot["fim"][0] * 60 + slot["fim"][1]
+            if ini_min <= total <= fim_min:
+                return slot_key
+    except (ValueError, IndexError):
+        pass
+    return None
 
 
 def init_db():
@@ -84,6 +112,7 @@ def init_db():
             "ALTER TABLE alunos ADD COLUMN email TEXT NOT NULL DEFAULT ''",
             "ALTER TABLE alunos ADD COLUMN bloqueado INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE alunos ADD COLUMN receber_email INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE materias ADD COLUMN slot TEXT",
         ]:
             try:
                 con.execute(migration)
@@ -97,6 +126,12 @@ def init_db():
                 turma      TEXT    NOT NULL,
                 disciplina TEXT    NOT NULL,
                 professor  TEXT    NOT NULL
+            )
+        """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS salas_historico (
+                id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                sala TEXT    UNIQUE NOT NULL
             )
         """)
         con.execute("""
@@ -218,17 +253,79 @@ def excluir_disciplina_historico(disc_id):
         con.execute("DELETE FROM disciplinas_historico WHERE id=?", (disc_id,))
 
 
-def salvar_materia(aluno_id, dia, turma, disciplina, professor):
+
+_SALAS_IGNORADAS = {"ONLINE", "EAD", "REMOTO", "HIBRIDO", "HIBRIDA", "A DEFINIR", "NAO DEFINIDA", ""}
+
+def atualizar_historico_salas(df):
+    """Armazena permanentemente todas as salas ineditas encontradas na planilha."""
+    col = next((c for c in ["Salas","Sala"] if c in df.columns), None)
+    if not col:
+        return
+    salas = df[col].dropna().astype(str).str.strip()
+    salas = salas[~salas.str.upper().isin(_SALAS_IGNORADAS) & (salas != "")].unique()
+    inseridas = 0
+    with get_db() as con:
+        for sala in salas:
+            cur = con.execute(
+                "INSERT OR IGNORE INTO salas_historico (sala) VALUES (?)", (sala,)
+            )
+            inseridas += cur.rowcount
+    if inseridas:
+        print(f"[historico] {inseridas} sala(s) inedita(s) adicionadas.")
+
+
+def listar_salas_livres(df_hoje, horario_atual=None):
+    """Retorna salas do historico que nao estao ocupadas no horario atual."""
+    from datetime import datetime as _dt
+    if horario_atual is None:
+        agora = _dt.now()
+        horario_atual = agora.hour * 60 + agora.minute
+
+    col = next((c for c in ["Salas","Sala"] if c in df_hoje.columns), None)
+    ocupadas = set()
+    if col and "Horario" in df_hoje.columns:
+        for _, row in df_hoje[[col, "Horario"]].dropna().iterrows():
+            sala = str(row[col]).strip()
+            horario_str = str(row["Horario"]).strip()
+            try:
+                partes = horario_str.split("/")
+                h_ini = partes[0].strip()[:5]
+                h_fim = partes[1].strip()[:5]
+                ini_h, ini_m = map(int, h_ini.split(":"))
+                fim_h, fim_m = map(int, h_fim.split(":"))
+                ini = ini_h * 60 + ini_m
+                fim = fim_h * 60 + fim_m
+                if ini <= horario_atual <= fim:
+                    ocupadas.add(sala)
+            except Exception:
+                pass
+    elif col:
+        ocupadas = set(df_hoje[col].dropna().astype(str).str.strip().unique())
+
+    with get_db() as con:
+        todas = [r[0] for r in con.execute("SELECT sala FROM salas_historico ORDER BY sala").fetchall()]
+    return [s for s in todas if s not in ocupadas and s != ""]
+
+
+def contar_salas():
+    with get_db() as con:
+        row = con.execute("SELECT COUNT(*) FROM salas_historico").fetchone()
+    return row[0] if row else 0
+
+
+def salvar_materia(aluno_id, dia, turma, disciplina, professor, slot=None):
     with get_db() as con:
         existe = con.execute("""
             SELECT id FROM materias
             WHERE aluno_id=? AND dia=? AND disciplina=? AND turma=?
         """, (aluno_id, dia, disciplina, turma)).fetchone()
-        if not existe:
+        if existe:
+            con.execute("UPDATE materias SET slot=? WHERE id=?", (slot, existe[0]))
+        else:
             con.execute("""
-                INSERT INTO materias (aluno_id, dia, turma, disciplina, professor)
-                VALUES (?, ?, ?, ?, ?)
-            """, (aluno_id, dia, turma, disciplina, professor))
+                INSERT INTO materias (aluno_id, dia, turma, disciplina, professor, slot)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (aluno_id, dia, turma, disciplina, professor, slot))
 
 
 def remover_materia(aluno_id, materia_id):
@@ -258,12 +355,12 @@ def listar_materias_aluno(aluno_id, dia=None):
     with get_db() as con:
         if dia:
             return con.execute("""
-                SELECT id, dia, turma, disciplina, professor
-                FROM materias WHERE aluno_id=? AND dia=?
+                SELECT id, dia, turma, disciplina, professor, slot
+                FROM materias WHERE aluno_id=? AND UPPER(dia)=UPPER(?)
                 ORDER BY dia, disciplina
             """, (aluno_id, dia)).fetchall()
         return con.execute("""
-            SELECT id, dia, turma, disciplina, professor
+            SELECT id, dia, turma, disciplina, professor, slot
             FROM materias WHERE aluno_id=?
             ORDER BY dia, disciplina
         """, (aluno_id,)).fetchall()
@@ -292,8 +389,12 @@ def _gmail_service():
         creds = OAuthCredentials.from_authorized_user_file(GMAIL_TOKEN_FILE, GMAIL_SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                print(f"[gmail] Falha ao refreshar token: {e}")
+                creds = None
+        if not creds or not creds.valid:
             flow = InstalledAppFlow.from_client_secrets_file(GMAIL_CREDS_FILE, GMAIL_SCOPES)
             creds = flow.run_local_server(port=0)
         with open(GMAIL_TOKEN_FILE, "w") as f:
@@ -304,6 +405,9 @@ def _gmail_service():
 REMETENTE = "IBSALA <salas.ibtech@gmail.com>"
 
 def enviar_email(para, assunto, corpo_html):
+    if not para or not str(para).strip():
+        print(f"[email] Destinatario vazio, abortando: {assunto}")
+        return
     import base64
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
@@ -508,12 +612,18 @@ def _horario_na_janela(horario_str, janela_fim, janela_inicio=None):
         return True
 
 
-def notificar_todos(df, dia, janela_fim=None, janela_inicio=None):
-    """Envia email de aulas do dia para cada aluno com aula dentro da janela horária."""
+def notificar_todos(df, dia, slot=None):
+    """Envia email apenas com as disciplinas do slot especificado.
+    Se slot=None (admin), envia todas as materias do dia sem filtro.
+    A dupla confirmacao garante que:
+      1. o slot do aluno bate com o slot do disparo;
+      2. a disciplina aparece na planilha do dia com horario correspondente.
+    Duplicatas da mesma disciplina no mesmo slot sao ignoradas.
+    """
     alunos = listar_alunos_com_email()
     if not alunos:
         print("[notificar] Nenhum aluno com email cadastrado.")
-        return
+        return 0, 0
 
     enviados = 0
     erros    = 0
@@ -523,18 +633,31 @@ def notificar_todos(df, dia, janela_fim=None, janela_inicio=None):
             continue
 
         aulas = []
-        for _, _dia, turma, disciplina, professor in materias:
+        seen  = set()  # evita duplicatas quando disciplina aparece >1x no slot
+        for _, _dia, turma, disciplina, professor, mat_slot in materias:
+            # Confirmacao 1: slot do aluno bate com o slot do disparo
+            if slot and mat_slot != slot:
+                continue
+
+            # Confirmacao 2: disciplina aparece na planilha do dia
             linhas = filtrar_df(df, f"{turma} {disciplina}")
             if linhas.empty:
                 linhas = filtrar_df(df, " ".join(disciplina.split()[:3]))
-
-            if janela_fim and not linhas.empty:
-                linhas = linhas[linhas["Horario"].apply(
-                    lambda h: _horario_na_janela(h, janela_fim, janela_inicio)
-                )]
-
             if linhas.empty:
                 continue
+
+            # Filtra linhas cujo horario na planilha pertence ao slot
+            if slot and "Horario" in linhas.columns:
+                linhas = linhas[linhas["Horario"].apply(
+                    lambda h: horario_para_slot(h) == slot
+                )]
+            if linhas.empty:
+                continue
+
+            # Deduplicacao: mesma disciplina so entra uma vez por email
+            if disciplina in seen:
+                continue
+            seen.add(disciplina)
 
             aulas.append({
                 "disciplina": disciplina,
@@ -560,6 +683,7 @@ def notificar_todos(df, dia, janela_fim=None, janela_inicio=None):
             erros += 1
 
     print(f"[notificar] Concluido: {enviados} enviados, {erros} erros.")
+    return enviados, erros
 
 
 # ── Conexão Google Sheets ─────────────────────────────────────────────────────
@@ -669,12 +793,11 @@ def atualizar_historico_disciplinas(df):
             if not turma or not disciplina:
                 continue
             try:
-                con.execute(
+                cur = con.execute(
                     "INSERT OR IGNORE INTO disciplinas_historico (turma, disciplina, professor) VALUES (?, ?, ?)",
                     (turma, disciplina, professor)
                 )
-                if con.total_changes > inseridos:
-                    inseridos = con.total_changes
+                inseridos += cur.rowcount
             except Exception:
                 pass
     if inseridos:
@@ -688,6 +811,7 @@ def salvar_csv(df_organizado):
     df_organizado.to_csv(path, index=False, encoding="utf-8-sig")
     print(f"[cache] CSV salvo: {path}")
     atualizar_historico_disciplinas(df_organizado)
+    atualizar_historico_salas(df_organizado)
 
 
 # ── Parse ─────────────────────────────────────────────────────────────────────
@@ -735,6 +859,9 @@ def parsear_e_organizar(df_bruto):
             if any(v for k, v in registro.items() if k != "Categoria"):
                 todos_registros.append(registro)
 
+    if not todos_registros:
+        print("[parse] Nenhum registro valido encontrado na planilha.")
+        return pd.DataFrame()
     df = pd.DataFrame(todos_registros)
     return _normalizar_colunas(df)
 
@@ -751,9 +878,11 @@ def filtrar_df(df, termo):
     """Retorna linhas onde todas as palavras do termo aparecem em qualquer coluna.
     Insensível a acentos: financa == finanças, osmar == Osmar, etc.
     """
+    if df.empty:
+        return df.reset_index(drop=True)
     colunas = [c for c in df.columns if c != "Categoria"]
-    texto_linha = df[colunas].fillna("").apply(
-        lambda row: _normalizar_texto(" ".join(row.values.astype(str))), axis=1
+    texto_linha = df[colunas].fillna("").astype(str).apply(
+        lambda row: _normalizar_texto(" ".join(row.values)), axis=1
     )
     palavras = [_normalizar_texto(p) for p in termo.split()]
     mascara = pd.Series([True] * len(df), index=df.index)

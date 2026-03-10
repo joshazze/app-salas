@@ -389,7 +389,7 @@ async function cadSalvar(){
   G.alunoId=d.aluno_id;G.username=d.username;
   document.getElementById('s-aluno-title').textContent=`ola, ${d.username}`;
   document.getElementById('badge-hoje').textContent=G.statusData?.dia||'';
-  cancelCadastro();goto('s-aluno');
+  cancelCadastro();goto('s-aluno');init();
 }
 
 async function doRecuperar(){
@@ -514,8 +514,7 @@ async function loadAdmAlunos(){
       <div id="adm-alunos-total" style="font-size:11px;color:var(--text-muted);margin-bottom:6px"></div>`
     );
   }
-  el.innerHTML='<div style="color:var(--text-dim);font-size:12px;padding:10px 0">digite para buscar alunos.</div>';
-  document.getElementById('adm-alunos-total').textContent='';
+  buscarAdmAlunos();
 }
 async function buscarAdmAlunos(){
   const el=document.getElementById('adm-alunos-body');
@@ -566,7 +565,7 @@ async function alunoToggleBloqueio(id, bloqueado){
   const acao=bloqueado?'desbloquear':'bloquear';
   if(!confirm(`Deseja ${acao} este aluno?`))return;
   await api('/api/adm/alunos/bloquear',{...admCreds(),id,bloqueado:!bloqueado});
-  buscarAdmAlunos();
+  buscarAdmAlunos();init();
 }
 async function alunoEmailHoje(btn){
   const aluno_id=btn.dataset.aid,email=btn.dataset.email,username=btn.dataset.uname;

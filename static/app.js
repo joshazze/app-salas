@@ -35,7 +35,7 @@ function mkTable(rows,cols){
   if(!rows.length)return'<div class="msg warn">Nenhum resultado.</div>';
   const norm=rows.map(normalizeRow);
   if(!cols){
-    const base=['Turma','Disciplina','Professor','Horario','Sala','Data','Dia'];
+    const base=['Turma','Sala','Disciplina','Professor','Horario','Data','Dia'];
     cols=base.filter(c=>norm.some(r=>r[c]&&r[c]!==''));
   }
   let h='<table class="tbl"><thead><tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>';

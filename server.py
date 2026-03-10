@@ -206,6 +206,7 @@ def aulas_hoje():
             "disciplina": disciplina,
             "turma":      turma,
             "professor":  professor,
+            "slot":       slot,
             "salas":      df_para_lista(linhas),
         })
 

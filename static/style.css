@@ -192,3 +192,36 @@
     /* ── Slot chips (salas livres): hover ────────────────────────────────── */
     #busca-out span[style*="border:1px solid var(--cyan)"]{transition:background .15s,color .15s;cursor:default}
     #busca-out span[style*="border:1px solid var(--cyan)"]:hover{background:color-mix(in srgb,var(--cyan) 12%,transparent)}
+
+    /* ── Chips (dia/turno selector) ──────────────────────────────────────── */
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+    .chip{background:var(--bg2);border:1px solid var(--border);color:var(--text-dim);
+      font-family:var(--font);font-size:12px;padding:6px 12px;cursor:pointer;
+      transition:border-color .13s,color .13s,background .13s;min-height:36px;
+      display:inline-flex;align-items:center;user-select:none}
+    .chip:hover{border-color:var(--blue);color:var(--text)}
+    .chip.active{border-color:var(--cyan);color:var(--cyan);background:var(--bg3)}
+
+    /* ── Stepper ─────────────────────────────────────────────────────────── */
+    .stepper{display:flex;align-items:center;gap:0;margin-bottom:22px}
+    .step-dot{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);
+      background:var(--bg2);display:flex;align-items:center;justify-content:center;
+      font-size:11px;color:var(--text-dim);flex-shrink:0;transition:border-color .2s,color .2s,background .2s}
+    .step-dot.active{border-color:var(--cyan);color:var(--cyan);background:var(--bg3)}
+    .step-dot.done{border-color:var(--green);color:var(--green);background:var(--bg3)}
+    .step-line{flex:1;height:2px;background:var(--border);transition:background .2s}
+    .step-line.done{background:var(--green)}
+    .step-label{font-size:10px;color:var(--text-dim);letter-spacing:1px;text-align:center;margin-top:4px}
+
+    /* ── Disciplinas selecionadas (tags) ─────────────────────────────────── */
+    .disc-tags{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;min-height:32px}
+    .disc-tag{display:flex;align-items:center;gap:8px;padding:8px 12px;
+      border:1px solid var(--border);background:var(--bg2);font-size:12px;animation:fadeIn .15s ease both}
+    .disc-tag-dia{color:var(--blue);min-width:60px;font-size:11px;letter-spacing:.5px}
+    .disc-tag-disc{color:var(--text);flex:1}
+    .disc-tag-slot{color:var(--cyan);font-size:11px;white-space:nowrap}
+    .disc-tag-rm{background:none;border:none;color:var(--text-dim);cursor:pointer;
+      font-size:14px;padding:2px 6px;min-height:28px;min-width:28px;font-family:var(--font)}
+    .disc-tag-rm:hover{color:var(--red)}
+    .disc-count{font-size:11px;color:var(--text-dim);margin-bottom:6px}
+    .disc-count span{color:var(--cyan);font-weight:850}

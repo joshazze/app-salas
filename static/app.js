@@ -205,7 +205,7 @@ async function doLogin(){
   msg.innerHTML='';G.alunoId=d.aluno_id;G.username=d.username;
   document.getElementById('s-aluno-title').textContent=`ola, ${d.username}`;
   document.getElementById('badge-hoje').textContent=G.statusData?.dia||'';
-  goto('s-aluno');
+  goto('s-hoje');
 }
 function doLogout(){
   G.alunoId=null;G.username=null;
@@ -219,36 +219,85 @@ async function loadHoje(){
   el.innerHTML='<div class="loading">carregando...</div>';
   const d=await api('/api/aulas-hoje',{aluno_id:G.alunoId});
   if(!d.aulas.length){el.innerHTML=`<div class="msg warn">Nenhuma aula encontrada para ${d.dia}. Verifique se suas materias estao cadastradas e com turno definido em Configuracoes.</div>`;return;}
-  el.innerHTML=d.aulas.map(a=>{
-    function aulaTable(rows){
-      if(!rows.length)return '<div class="msg warn" style="font-size:12px">sala nao encontrada para hoje.</div>';
-      const cols=[];
-      if(rows.some(r=>r.Horario))cols.push('Horario');
-      if(rows.some(r=>r.Salas||r.Sala))cols.push('Sala');
-      if(rows.some(r=>r.DATA||r.Data))cols.push('Data');
-      if(rows.some(r=>r.Dia))cols.push('Dia');
-      if(!cols.length)return '<div class="msg warn" style="font-size:12px">sem detalhes disponiveis.</div>';
-      let h='<table class="tbl"><thead><tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr></thead><tbody>';
-      rows.forEach(r=>{
-        const sala=r.Salas||r.Sala||'';
-        const data=r.DATA||r.Data||'';
-        h+='<tr>'+cols.map(c=>{
-          if(c==='Sala')return '<td class="c-sala">'+sala+'</td>';
-          if(c==='Data')return '<td class="c-hora">'+data+'</td>';
-          if(c==='Horario')return '<td class="c-hora">'+(r.Horario||'')+'</td>';
-          if(c==='Dia')return '<td class="c-dim">'+(r.Dia||'')+'</td>';
-          return '<td>'+(r[c]||'')+'</td>';
-        }).join('')+'</tr>';
-      });
-      return h+'</tbody></table>';
-    }
-    return '<div class="aula-card">'
-      +'<div class="aula-card-title">'+a.disciplina+'</div>'
-      +'<div class="aula-card-meta">'+a.turma+' &nbsp;&middot;&nbsp; '+a.professor+'</div>'
-      +aulaTable(a.salas)
-      +'</div>';
+
+  const agora=new Date();
+  const agora_min=agora.getHours()*60+agora.getMinutes();
+  const SLOT_INI={manha1:6*60,manha2:9*60+30,tarde1:13*60,tarde2:14*60,noite1:18*60,noite2:19*60};
+  const SLOT_FIM={manha1:9*60+29,manha2:12*60+59,tarde1:13*60+59,tarde2:17*60+59,noite1:18*60+59,noite2:23*60+59};
+  const SLOT_HORA={manha1:'07:30',manha2:'09:50',tarde1:'13:00',tarde2:'14:00',noite1:'18:00',noite2:'19:00'};
+  const SLOT_ORDER={manha1:0,manha2:1,tarde1:2,tarde2:3,noite1:4,noite2:5};
+
+  function classify(slot){
+    const ini=SLOT_INI[slot],fim=SLOT_FIM[slot];
+    if(ini==null)return 'futuro';
+    if(agora_min>=ini&&agora_min<=fim)return 'agora';
+    if(agora_min>fim)return 'concluida';
+    return 'futuro';
+  }
+
+  // Classificar e ordenar: agora primeiro, futuro por horario, concluida no final
+  const aulas=d.aulas.map(a=>({...a,_status:classify(a.slot),_order:SLOT_ORDER[a.slot]??99}));
+  const PRIO={agora:0,futuro:1,concluida:2};
+  aulas.sort((a,b)=>PRIO[a._status]-PRIO[b._status]||a._order-b._order);
+
+  function getSala(rows){
+    if(!rows.length)return null;
+    const r=rows[0];
+    return r.Salas||r.Sala||null;
+  }
+  function getHorario(rows){
+    if(!rows.length)return null;
+    return rows[0].Horario||null;
+  }
+
+  el.innerHTML=aulas.map(a=>{
+    const st=a._status;
+    const sala=getSala(a.salas);
+    const horario=getHorario(a.salas)||SLOT_HORA[a.slot]||'';
+    const turnoLabel=SLOT_LABELS[a.slot]||'';
+
+    const badge=st==='agora'
+      ?`<span class="badge-agora" style="font-size:10px;padding:3px 8px;background:var(--cyan);color:var(--bg);font-weight:bold;letter-spacing:.5px">AGORA</span>`
+      :st==='concluida'
+      ?`<span style="font-size:10px;padding:3px 8px;border:1px solid var(--text-dim);color:var(--text-dim);letter-spacing:.5px">CONCLU\u00cdDA</span>`
+      :'';
+
+    const salaEl=sala
+      ?`<span class="c-sala" style="font-size:18px;font-weight:900;letter-spacing:1px">${sala}</span>`
+      :`<span style="color:var(--text-dim);font-size:13px">sala nao encontrada</span>`;
+
+    const extraRows=a.salas.length>1
+      ?`<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">`
+        +a.salas.slice(1).map(r=>{
+          const s=r.Salas||r.Sala||'';
+          const h=r.Horario||'';
+          return s?`<span style="padding:3px 10px;border:1px solid var(--border);color:var(--text-dim);font-size:11px">${s}${h?' · '+h:''}</span>`:'';
+        }).join('')+'</div>'
+      :'';
+
+    const cardStyle=st==='agora'
+      ?'border-color:var(--cyan)'
+      :st==='concluida'
+      ?'opacity:0.55'
+      :'';
+
+    return `<div class="aula-card" style="${cardStyle}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+        ${badge}
+        <span style="color:var(--text-dim);font-size:11px;letter-spacing:.5px">${turnoLabel} &mdash; ${horario}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:6px;flex-wrap:wrap">
+        <div style="min-width:90px">${salaEl}</div>
+        <div>
+          <div class="aula-card-title" style="margin-bottom:2px">${a.disciplina}</div>
+          <div class="aula-card-meta">${a.turma} &nbsp;&middot;&nbsp; ${a.professor}</div>
+        </div>
+      </div>
+      ${extraRows}
+    </div>`;
   }).join('');
 }
+
 async function loadTodas(){
   const el=document.getElementById('s-todas-body');
   el.innerHTML='<div class="loading">carregando...</div>';
@@ -321,14 +370,19 @@ async function gerBuscar(){
   }));
 }
 function cancelCadastro(){
-  G.cadUser=null;G.cadMats=[];
+  G.cadUser=null;G.cadMats=[];G._cadDia='';G._cadSlot='';
   document.getElementById('cad-un').value='';
   document.getElementById('cad-email').value='';
   document.getElementById('cad-un-msg').innerHTML='';
+  document.getElementById('cad-p2-msg').innerHTML='';
+  document.getElementById('cad-pick').innerHTML='';
   document.getElementById('cad-p1').style.display='block';
   document.getElementById('cad-p2').style.display='none';
-  document.getElementById('cad-dt-list').innerHTML='<li style="color:var(--text-dim);font-size:12px;padding:5px 0">nenhuma ainda.</li>';
-  document.getElementById('cad-pick').innerHTML='';
+  document.getElementById('cad-p3').style.display='none';
+  document.getElementById('btn-cad-email-toggle').setAttribute('data-ativo','1');
+  document.getElementById('sw-cad-email').classList.add('on');
+  cadStepUI(1);
+  renderDiscTags();
   goto('s-main');
 }
 function irCadastro(un){goto('s-cadastro');document.getElementById('cad-un').value=un;cadCheckUser();}
@@ -337,37 +391,47 @@ async function cadCheckUser(){
   const msg=document.getElementById('cad-un-msg');if(!un)return;
   msg.innerHTML='<div class="loading">verificando...</div>';
   const d=await api('/api/verificar-username',{username:un});
-  if(!d.disponivel){msg.innerHTML=`<div class="msg error">username "${un}" ja existe.</div>`;return;}
-  G.cadUser=un;G.cadMats=[];msg.innerHTML='';
-  document.getElementById('cad-un-ok').textContent=`username "${un}" disponivel.`;
+  if(!d.disponivel){msg.innerHTML=`<div class="msg error">username "@${un}" ja esta em uso. Tente outro.</div>`;return;}
+  G.cadUser=un;G.cadMats=[];G._cadDia='';G._cadSlot='';msg.innerHTML='';
+  document.getElementById('cad-un-ok').textContent=`@${un} disponivel.`;
   document.getElementById('cad-p1').style.display='none';
   document.getElementById('cad-p2').style.display='block';
+  cadStepUI(2);
+  document.getElementById('cad-email').focus();
 }
-function renderDtList(){
-  const ul=document.getElementById('cad-dt-list');
-  if(!G.cadMats.length){ul.innerHTML='<li style="color:var(--text-dim);font-size:12px;padding:5px 0">nenhuma ainda.</li>';return;}
-  ul.innerHTML=G.cadMats.map((m,i)=>`<li class="dt-item">
-    <span class="dt-dia">${m.dia}</span><span class="dt-disc">${m.disciplina}</span>
-    <span class="c-hora" style="font-size:11px;margin-left:6px">${SLOT_LABELS[m.slot]||''}</span>
-    <button class="dt-rm" onclick="cadRm(${i})">&#10005;</button></li>`).join('');
+function renderDiscTags(){
+  const el=document.getElementById('cad-disc-tags');
+  const cnt=document.getElementById('cad-disc-count');
+  if(cnt)cnt.textContent=G.cadMats.length;
+  if(!G.cadMats.length){
+    el.innerHTML='<p style="color:var(--text-dim);font-size:12px;padding:6px 0">nenhuma ainda &mdash; use a busca abaixo para adicionar.</p>';
+    return;
+  }
+  el.innerHTML=G.cadMats.map((m,i)=>`
+    <div class="disc-tag">
+      <span class="disc-tag-dia">${m.dia}</span>
+      <span class="disc-tag-disc">${m.disciplina}<br><span style="color:var(--text-dim);font-size:11px">${m.turma} &mdash; ${m.professor||''}</span></span>
+      <span class="disc-tag-slot">${SLOT_LABELS[m.slot]||''}</span>
+      <button class="disc-tag-rm" onclick="cadRm(${i})" title="remover">&#10005;</button>
+    </div>`).join('');
 }
-function cadRm(i){G.cadMats.splice(i,1);renderDtList();}
+function renderDtList(){renderDiscTags();}
+function cadRm(i){G.cadMats.splice(i,1);renderDiscTags();}
 async function cadBuscar(){
   const termo=document.getElementById('cad-inp').value.trim();
   const el=document.getElementById('cad-pick');
+  if(!G._cadDia){el.innerHTML='<div class="msg warn">Selecione o dia da semana primeiro.</div>';return;}
+  if(!G._cadSlot){el.innerHTML='<div class="msg warn">Selecione o turno primeiro.</div>';return;}
   if(!termo){el.innerHTML='';return;}
+  el.innerHTML='<div class="loading">buscando...</div>';
   const d=await api('/api/buscar-disciplinas',{termo});
-  if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhuma disciplina encontrada. Tente outro termo de busca.</div>';return;}
+  if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhuma disciplina encontrada. Tente outro termo.</div>';return;}
   el.replaceChildren(mkPickList(d.registros,row=>{
-    const dia=document.getElementById('cad-dia').value;
-    if(!dia){el.innerHTML='<div class="msg error">Selecione o dia antes de adicionar.</div>';return;}
-    const cadSlot=document.getElementById('cad-slot').value;
-    if(!cadSlot){el.innerHTML='<div class="msg warn">Selecione o turno de horario antes de adicionar.</div>';return;}
-    const dup=G.cadMats.some(m=>m.dia===dia&&m.disciplina===row.Disciplina&&m.turma===row.Turma);
+    const dup=G.cadMats.some(m=>m.dia===G._cadDia&&m.disciplina===row.Disciplina&&m.turma===row.Turma);
     if(dup){el.innerHTML='<div class="msg warn">Ja adicionada.</div>';return;}
-    G.cadMats.push({dia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor,slot:cadSlot});
-    renderDtList();
-    el.innerHTML=`<div class="msg ok">Adicionada: ${row.Disciplina} (${dia})</div>`;
+    G.cadMats.push({dia:G._cadDia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor,slot:G._cadSlot});
+    renderDiscTags();
+    el.innerHTML=`<div class="msg ok">&#10003; Adicionada: ${row.Disciplina} (${G._cadDia})</div>`;
     document.getElementById('cad-inp').value='';
   }));
 }
@@ -375,15 +439,9 @@ async function cadSalvar(){
   if(!G.cadUser)return;
   const email=document.getElementById('cad-email').value.trim();
   const msgEl=document.getElementById('cad-pick');
-  if(!email){msgEl.innerHTML='<div class="msg error">Email e obrigatorio para receber notificacoes.</div>';return;}
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msgEl.innerHTML='<div class="msg error">Email invalido. Use o formato: nome@dominio.com</div>';return;}
-  if(!G.cadMats.length){msgEl.innerHTML='<div class="msg error">Adicione ao menos uma disciplina antes de salvar.</div>';return;}
-  const semSlot=G.cadMats.filter(m=>!m.slot);
-  if(semSlot.length){
-    msgEl.innerHTML=`<div class="msg error">&#9888; ${semSlot.length} disciplina(s) sem turno definido: ${semSlot.map(m=>m.disciplina.split('/').pop().trim()).join(', ')}. Selecione o turno de horario de cada uma.</div>`;
-    return;
-  }
+  if(!G.cadMats.length){msgEl.innerHTML='<div class="msg error">Adicione ao menos uma disciplina antes de finalizar.</div>';return;}
   const receber_email=document.getElementById('btn-cad-email-toggle')?.getAttribute('data-ativo')!=='0';
+  msgEl.innerHTML='<div class="loading">salvando...</div>';
   const d=await api('/api/cadastrar',{username:G.cadUser,email,materias:G.cadMats,receber_email});
   if(d.erro){msgEl.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   G.alunoId=d.aluno_id;G.username=d.username;
@@ -753,6 +811,8 @@ function debounce(fn,ms){
 
 // ── Configuracoes do aluno ───────────────────────────────────────────────────
 function cadToggleEmail(){
+  const sw=document.getElementById('sw-cad-email');
+  if(sw)sw.classList.toggle('on');
   const btn=document.getElementById('btn-cad-email-toggle');
   const ativo=btn.getAttribute('data-ativo')==='1';
   btn.setAttribute('data-ativo', ativo?'0':'1');
@@ -799,3 +859,38 @@ window.addEventListener('popstate',function(e){
     if(t)navigator.vibrate(8);
   },{passive:true});
 })();
+
+function cadStepUI(step){
+  ['cad-step1-dot','cad-step2-dot','cad-step3-dot'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.className='step-dot'+(i+1<step?' done':i+1===step?' active':'');
+  });
+  ['cad-line1','cad-line2'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    el.className='step-line'+(i+1<step?' done':'');
+  });
+}
+function cadChipDia(el){
+  document.querySelectorAll('#cad-chips-dia .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  G._cadDia=el.getAttribute('data-val');
+  document.getElementById('cad-pick').innerHTML='';
+}
+function cadChipSlot(el){
+  document.querySelectorAll('#cad-chips-slot .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  G._cadSlot=el.getAttribute('data-val');
+  document.getElementById('cad-pick').innerHTML='';
+}
+async function cadGoP3(){
+  const email=document.getElementById('cad-email').value.trim();
+  const msgEl=document.getElementById('cad-p2-msg');
+  if(!email){msgEl.innerHTML='<div class="msg error">Informe seu email para continuar.</div>';return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msgEl.innerHTML='<div class="msg error">Email invalido. Use o formato: nome@dominio.com</div>';return;}
+  msgEl.innerHTML='';
+  document.getElementById('cad-p2').style.display='none';
+  document.getElementById('cad-p3').style.display='block';
+  cadStepUI(3);
+}

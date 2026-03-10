@@ -179,77 +179,137 @@
     <div id="ger-pick"></div>
   </div>
   <div id="s-cadastro" class="screen">
-    <button class="btn-back" onclick="cancelCadastro()">&larr; cancelar cadastro</button>
+    <button class="btn-back" onclick="cancelCadastro()">&larr; cancelar</button>
     <p class="stitle">criar cadastro</p>
-    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Gratuito e rapido. Voce vai escolher um username, informar seu email e adicionar suas materias &mdash; depois recebera um aviso por email <strong style="color:var(--text)">30 minutos antes de cada aula</strong> com a sala exata.</p>
+
+    <!-- stepper visual -->
+    <div style="margin-bottom:20px">
+      <div class="stepper">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div class="step-dot active" id="cad-step1-dot">1</div>
+          <span class="step-label">USERNAME</span>
+        </div>
+        <div class="step-line" id="cad-line1"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div class="step-dot" id="cad-step2-dot">2</div>
+          <span class="step-label">EMAIL</span>
+        </div>
+        <div class="step-line" id="cad-line2"></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div class="step-dot" id="cad-step3-dot">3</div>
+          <span class="step-label">MATÉRIAS</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSO 1: username -->
     <div id="cad-p1">
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">passo 1 de 3 &mdash; username</p>
-      <p style="color:var(--text-dim);font-size:11px;margin-bottom:10px;line-height:1.6">Escolha um identificador unico com letras, numeros e underscores (sem espacos). Voce vai usa-lo para entrar toda vez que acessar o IBSALA.</p>
+      <p style="color:var(--text-dim);font-size:12px;margin-bottom:14px;line-height:1.7">Escolha um identificador único. Use letras, números e underscores &mdash; sem espaços. Você vai usá-lo para entrar toda vez que acessar o IBSALA.</p>
       <div class="igroup">
         <span class="iprefix">@</span>
-        <input type="text" id="cad-un" placeholder="username"
+        <input type="text" id="cad-un" placeholder="meu_username"
                onkeydown="if(event.key==='Enter')cadCheckUser()"/>
-        <button class="btn primary" onclick="cadCheckUser()">confirmar</button>
+        <button class="btn primary" onclick="cadCheckUser()">continuar &rarr;</button>
       </div>
       <div id="cad-un-msg"></div>
     </div>
+
+    <!-- PASSO 2: email + notificacoes -->
     <div id="cad-p2" style="display:none">
-      <div class="msg info" id="cad-un-ok"></div>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">passo 2 de 3 &mdash; email</p>
-      <p style="color:var(--text-dim);font-size:11px;margin-bottom:6px;line-height:1.6">Use seu email institucional ou pessoal. Os avisos de aula serao enviados para este endereco. Voce pode desativar as notificacoes a qualquer momento em Configuracoes.</p>
-      <div class="igroup" style="margin-bottom:16px">
+      <div class="msg ok" id="cad-un-ok" style="margin-bottom:18px"></div>
+      <p style="color:var(--text-dim);font-size:12px;margin-bottom:14px;line-height:1.7">Informe seu email para receber avisos de sala <strong style="color:var(--text)">30 minutos antes de cada aula</strong>. Pode ser institucional ou pessoal. Você pode desativar as notificações depois em Configurações.</p>
+      <div class="igroup" style="margin-bottom:20px">
         <span class="iprefix">@</span>
-        <input type="text" id="cad-email" placeholder="seu@email.com"/>
+        <input type="text" id="cad-email" placeholder="seu@email.com"
+               onkeydown="if(event.key==='Enter')cadGoP3()"/>
       </div>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">passo 3 de 3 &mdash; suas materias</p>
-      <p style="color:var(--text-dim);font-size:11px;margin-bottom:8px;line-height:1.6">Adicione todas as suas disciplinas. Para cada uma, selecione o <strong style="color:var(--text)">dia</strong> e o <strong style="color:var(--text)">turno de horario</strong> correspondente ao turno real da aula. Sem turno, a disciplina nao gera notificacao.</p>
-      <p style="color:var(--text-muted);font-size:11px;margin-bottom:6px">disciplinas selecionadas <span style="color:var(--text-dim)">(salvas apenas ao confirmar)</span>:</p>
-      <ul class="dt-list" id="cad-dt-list">
-        <li style="color:var(--text-dim);font-size:12px;padding:5px 0">nenhuma ainda.</li>
-      </ul>
+      <div style="border:1px solid var(--border);background:var(--bg2);padding:14px 18px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;gap:16px">
+        <div>
+          <p style="color:var(--text);font-size:13px;margin-bottom:3px">Receber emails diários com salas</p>
+          <p style="color:var(--text-dim);font-size:11px;line-height:1.5">Enviaremos um aviso quando você tiver aulas no dia</p>
+        </div>
+        <label class="sw" onclick="cadToggleEmail()">
+          <span class="sw-track on" id="sw-cad-email"><span class="sw-thumb"></span></span>
+        </label>
+      </div>
+      <input type="hidden" id="btn-cad-email-toggle" data-ativo="1"/>
+      <button class="btn primary" style="width:100%" onclick="cadGoP3()">continuar &rarr; adicionar matérias</button>
+      <div id="cad-p2-msg" style="margin-top:10px"></div>
+    </div>
+
+    <!-- PASSO 3: disciplinas -->
+    <div id="cad-p3" style="display:none">
+      <p style="color:var(--text-muted);font-size:11px;margin-bottom:14px;line-height:1.6">Adicione suas disciplinas. Selecione o dia e o turno primeiro, depois busque pelo nome, turma ou professor.</p>
+
+      <!-- Disciplinas selecionadas -->
+      <div style="margin-bottom:16px">
+        <p class="disc-count">disciplinas adicionadas: <span id="cad-disc-count">0</span></p>
+        <div class="disc-tags" id="cad-disc-tags">
+          <p style="color:var(--text-dim);font-size:12px;padding:6px 0">nenhuma ainda &mdash; use a busca abaixo para adicionar.</p>
+        </div>
+      </div>
+
       <hr>
-      <p style="color:var(--text-muted);font-size:12px;margin-bottom:4px">buscar e adicionar disciplina</p>
-      <p style="color:var(--text-dim);font-size:11px;margin-bottom:8px;line-height:1.6">Nao sabe qual turno? Consulte a tabela abaixo. Selecione o dia, o turno e busque a disciplina pelo nome ou turma.</p>
-      <details style="margin-bottom:10px">
-      <summary style="cursor:pointer;font-size:12px;color:var(--cyan);user-select:none;list-style:none">&#9654; ver horarios de cada turno</summary>
-      <table class="tbl" style="margin-top:8px;font-size:12px">
-        <thead><tr><th>Turno</th><th>Horarios na planilha</th><th>Disparo do email</th></tr></thead>
-        <tbody>
-          <tr><td class="c-hora">1º Manhã</td><td>07:30 &ndash; 09:20</td><td class="c-dim">07:00</td></tr>
-          <tr><td class="c-hora">2º Manhã</td><td>09:50, 11:30, 11:40</td><td class="c-dim">09:20</td></tr>
-          <tr><td class="c-hora">1º Tarde</td><td>13:00, 13:30</td><td class="c-dim">12:30</td></tr>
-          <tr><td class="c-hora">2º Tarde</td><td>14:00, 15:20, 15:50</td><td class="c-dim">13:30</td></tr>
-          <tr><td class="c-hora">1º Noite</td><td>18:00, 18:40</td><td class="c-dim">17:30</td></tr>
-          <tr><td class="c-hora">2º Noite</td><td>19:00</td><td class="c-dim">18:30</td></tr>
-        </tbody>
-      </table>
-    </details>
-      <div class="add-row">
-        <select id="cad-dia"><option value="">-- dia --</option>
-          <option>SEGUNDA</option><option>TERCA</option><option>QUARTA</option>
-          <option>QUINTA</option><option>SEXTA</option><option>SABADO</option>
-        </select>
-        <select id="cad-slot"><option value="">-- turno --</option><option value="manha1">1º Manhã (07:30)</option><option value="manha2">2º Manhã (09:50+)</option><option value="tarde1">1º Tarde (13:00)</option><option value="tarde2">2º Tarde (14:00+)</option><option value="noite1">1º Noite (18:00)</option><option value="noite2">2º Noite (19:00+)</option></select>
-        <input type="text" id="cad-inp" placeholder="buscar disciplina..."
-               onkeydown="if(event.key==='Enter')cadBuscar()"/>
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:10px">buscar disciplina</p>
+
+      <!-- Chips de DIA -->
+      <p style="color:var(--text-dim);font-size:11px;margin-bottom:6px;letter-spacing:.5px">DIA DA SEMANA</p>
+      <div class="chips" id="cad-chips-dia">
+        <span class="chip" data-val="SEGUNDA" onclick="cadChipDia(this)">SEG</span>
+        <span class="chip" data-val="TERCA"   onclick="cadChipDia(this)">TER</span>
+        <span class="chip" data-val="QUARTA"  onclick="cadChipDia(this)">QUA</span>
+        <span class="chip" data-val="QUINTA"  onclick="cadChipDia(this)">QUI</span>
+        <span class="chip" data-val="SEXTA"   onclick="cadChipDia(this)">SEX</span>
+        <span class="chip" data-val="SABADO"  onclick="cadChipDia(this)">SÁB</span>
+      </div>
+
+      <!-- Chips de TURNO -->
+      <p style="color:var(--text-dim);font-size:11px;margin-bottom:6px;letter-spacing:.5px">TURNO</p>
+      <div class="chips" id="cad-chips-slot">
+        <span class="chip" data-val="manha1" onclick="cadChipSlot(this)">1º Manhã</span>
+        <span class="chip" data-val="manha2" onclick="cadChipSlot(this)">2º Manhã</span>
+        <span class="chip" data-val="tarde1" onclick="cadChipSlot(this)">1º Tarde</span>
+        <span class="chip" data-val="tarde2" onclick="cadChipSlot(this)">2º Tarde</span>
+        <span class="chip" data-val="noite1" onclick="cadChipSlot(this)">1º Noite</span>
+        <span class="chip" data-val="noite2" onclick="cadChipSlot(this)">2º Noite</span>
+      </div>
+
+      <!-- Busca -->
+      <div class="igroup" style="margin-bottom:6px">
+        <input type="text" id="cad-inp" placeholder="nome da disciplina, turma ou professor..."
+               onkeydown="if(event.key==='Enter')cadBuscar()" style="flex:1"/>
         <button class="btn" onclick="cadBuscar()">buscar</button>
       </div>
+      <p style="color:var(--text-dim);font-size:11px;margin-bottom:10px">Selecione dia e turno antes de buscar. A disciplina será adicionada com o turno selecionado.</p>
       <div id="cad-pick"></div>
-      <hr>
-      <div style="border:1px solid var(--border);background:var(--bg2);padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+
+      <!-- Referencia de turnos -->
+      <details style="margin:12px 0">
+        <summary style="cursor:pointer;font-size:12px;color:var(--cyan);user-select:none;list-style:none">
+          <span class="slot-arrow" style="color:var(--cyan);font-size:11px">&#9654;</span> ver horários de cada turno
+        </summary>
         <div>
-          <span style="color:var(--text);font-size:13px">Receber emails diarios com salas</span>
-          <p style="color:var(--text-dim);font-size:11px;margin-top:2px">Enviaremos um email quando voce tiver aulas no dia</p>
+          <table class="tbl" style="margin-top:8px;font-size:12px">
+            <thead><tr><th>Turno</th><th>Horários</th><th>Email às</th></tr></thead>
+            <tbody>
+              <tr><td class="c-hora">1º Manhã</td><td>07:30 &ndash; 09:20</td><td class="c-dim">07:00</td></tr>
+              <tr><td class="c-hora">2º Manhã</td><td>09:50, 11:30, 11:40</td><td class="c-dim">09:20</td></tr>
+              <tr><td class="c-hora">1º Tarde</td><td>13:00, 13:30</td><td class="c-dim">12:30</td></tr>
+              <tr><td class="c-hora">2º Tarde</td><td>14:00, 15:20, 15:50</td><td class="c-dim">13:30</td></tr>
+              <tr><td class="c-hora">1º Noite</td><td>18:00, 18:40</td><td class="c-dim">17:30</td></tr>
+              <tr><td class="c-hora">2º Noite</td><td>19:00</td><td class="c-dim">18:30</td></tr>
+            </tbody>
+          </table>
         </div>
-        <button id="btn-cad-email-toggle" class="btn sm success" onclick="cadToggleEmail()" data-ativo="1">ativado</button>
-      </div>
+      </details>
+
+      <hr>
       <div class="btn-row">
-        <button class="btn success" onclick="cadSalvar()">&#10003; salvar cadastro</button>
-        <button class="btn danger"  onclick="cancelCadastro()">&#10005; cancelar tudo</button>
+        <button class="btn success" onclick="cadSalvar()">&#10003; finalizar cadastro</button>
+        <button class="btn danger"  onclick="cancelCadastro()">&#10005; cancelar</button>
       </div>
     </div>
   </div>
-
   <!-- ADMIN SCREENS -->
   <div id="s-adm-login" class="screen">
     <p class="stitle">acesso administrativo</p>

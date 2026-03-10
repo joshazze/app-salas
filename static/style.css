@@ -88,3 +88,6 @@
       #s-adm-main .btn-back{white-space:nowrap;font-size:11px;padding:4px 8px}
       .igroup{flex-wrap:nowrap}
     }
+
+    .slot-arrow{display:inline-block;transition:transform 0.25s ease}
+    details[open] .slot-arrow{transform:rotate(90deg)}

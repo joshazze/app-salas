@@ -57,12 +57,12 @@ TITULOS_CATEGORIA = [
 
 # Faixas de horario para notificacao por slot (limites em minutos a partir de 00:00)
 SLOTS = {
-    "manha1": {"label": "Manha 1",  "inicio": (6,  0), "fim": (9, 29)},
-    "manha2": {"label": "Manha 2",  "inicio": (9, 30), "fim": (12, 59)},
-    "tarde1": {"label": "Tarde 1",  "inicio": (13, 0), "fim": (13, 59)},
-    "tarde2": {"label": "Tarde 2",  "inicio": (14, 0), "fim": (17, 59)},
-    "noite1": {"label": "Noite 1",  "inicio": (18, 0), "fim": (18, 59)},
-    "noite2": {"label": "Noite 2",  "inicio": (19, 0), "fim": (23, 59)},
+    "manha1": {"label": "1º Manhã",  "inicio": (6,  0), "fim": (9, 29)},
+    "manha2": {"label": "2º Manhã",  "inicio": (9, 30), "fim": (12, 59)},
+    "tarde1": {"label": "1º Tarde",  "inicio": (13, 0), "fim": (13, 59)},
+    "tarde2": {"label": "2º Tarde",  "inicio": (14, 0), "fim": (17, 59)},
+    "noite1": {"label": "1º Noite",  "inicio": (18, 0), "fim": (18, 59)},
+    "noite2": {"label": "2º Noite",  "inicio": (19, 0), "fim": (23, 59)},
 }
 
 
@@ -532,12 +532,12 @@ def email_boas_vindas(username, email, materias):
             for m in mats:
                 slot_label = ''
                 if m.get("slot"):
-                    slot_labels = {"manha1":"Manha 1 (07:30)","manha2":"Manha 2 (09:50)",
-                                   "tarde1":"Tarde 1 (13:00)","tarde2":"Tarde 2 (14:00)",
-                                   "noite1":"Noite 1 (18:00)","noite2":"Noite 2 (19:00)"}
+                    slot_labels = {"manha1":"1º Manhã (07:30)","manha2":"2º Manhã (09:50)",
+                                   "tarde1":"1º Tarde (13:00)","tarde2":"2º Tarde (14:00)",
+                                   "noite1":"1º Noite (18:00)","noite2":"2º Noite (19:00)"}
                     slot_label = f" &middot; <span style='color:#1a73e8'>{slot_labels.get(m['slot'], m['slot'])}</span>"
                 else:
-                    slot_label = " &middot; <span style='color:#e53935'>sem slot &mdash; configure em Configuracoes</span>"
+                    slot_label = " &middot; <span style='color:#e53935'>sem turno &mdash; configure em Configuracoes</span>"
                 linhas_materias += (
                     f"<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
                     f"padding:10px 14px;margin-bottom:6px;background:#ffffff'>"
@@ -577,10 +577,10 @@ def email_boas_vindas(username, email, materias):
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3.</span> "
         "Veja suas aulas do dia com sala, horario e professor em tempo real</div>"
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3b.</span> "
-        "Na busca livre, ative <strong>salas livres por slot</strong> para ver quais salas estao desocupadas em cada turno do dia &mdash; sem precisar de cadastro</div>"
+        "Na busca livre, ative <strong>salas livres por turno</strong> para ver quais salas estao desocupadas em cada turno do dia &mdash; sem precisar de cadastro</div>"
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>4.</span> "
         "Em <em>Configuracoes</em>, adicione suas disciplinas e selecione o "
-        "<strong>slot de horario</strong> de cada uma para ativar as notificacoes por email</div>"
+        "<strong>turno de horario</strong> de cada uma para ativar as notificacoes por email</div>"
         "<div style='margin-top:10px;padding:10px 12px;background:#ffffff;border:1px solid #ffc107;"
         "font-size:12px;color:#856404'>"
         "&#9432; Voce so recebera emails de aviso se cada disciplina tiver um slot definido. "

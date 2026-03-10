@@ -22,7 +22,7 @@ async function api(url,body){
     return{erro:'Falha de conexao com o servidor.'};
   }
 }
-const SLOT_LABELS={manha1:"Manha 1",manha2:"Manha 2",tarde1:"Tarde 1",tarde2:"Tarde 2",noite1:"Noite 1",noite2:"Noite 2"};
+const SLOT_LABELS={manha1:"1º Manhã",manha2:"2º Manhã",tarde1:"1º Tarde",tarde2:"2º Tarde",noite1:"1º Noite",noite2:"2º Noite"};
 const COL_CLS={Sala:'c-sala',Horario:'c-hora',Turma:'c-turma',Categoria:'c-dim',Professor:'c-dim',Data:'c-hora',Dia:'c-dim'};
 const SKIP_COLS=new Set(['Categoria','Salas','DATA','Sala','Data','Descricao','Responsavel']);
 function normalizeRow(r){
@@ -218,7 +218,7 @@ async function loadHoje(){
   document.getElementById('s-hoje-title').textContent=`aulas de hoje -- ${G.statusData?.dia||''}`;
   el.innerHTML='<div class="loading">carregando...</div>';
   const d=await api('/api/aulas-hoje',{aluno_id:G.alunoId});
-  if(!d.aulas.length){el.innerHTML=`<div class="msg warn">Nenhuma aula encontrada para ${d.dia}. Verifique se suas materias estao cadastradas e com slot definido em Configuracoes.</div>`;return;}
+  if(!d.aulas.length){el.innerHTML=`<div class="msg warn">Nenhuma aula encontrada para ${d.dia}. Verifique se suas materias estao cadastradas e com turno definido em Configuracoes.</div>`;return;}
   el.innerHTML=d.aulas.map(a=>{
     function aulaTable(rows){
       if(!rows.length)return '<div class="msg warn" style="font-size:12px">sala nao encontrada para hoje.</div>';
@@ -258,7 +258,7 @@ async function loadTodas(){
   const DIA_ORDER=['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
   el.innerHTML=Object.entries(g).sort(([a],[b])=>DIA_ORDER.indexOf(a)-DIA_ORDER.indexOf(b)).map(([dia,mats])=>
     `<div class="cat-block"><div class="cat-label">${dia}</div>
-    <table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Slot</th></tr></thead><tbody>
+    <table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Turno</th></tr></thead><tbody>
     ${mats.map(m=>`<tr><td class="c-turma">${m.turma}</td><td>${m.disciplina}</td><td class="c-dim">${m.professor}</td><td class="c-hora">${SLOT_LABELS[m.slot]||'—'}</td></tr>`).join('')}
     </tbody></table></div>`).join('');
 }
@@ -270,10 +270,10 @@ async function loadGer(){
   if(!d.materias.length){el.innerHTML='<div class="msg warn" style="margin-bottom:0">Nenhuma materia cadastrada. Adicione suas disciplinas abaixo.</div>';return;}
   const semSlot=d.materias.filter(m=>!m.slot);
   const aviso=semSlot.length
-    ?`<div class="msg warn" style="margin-bottom:12px">&#9888; ${semSlot.length} disciplina(s) sem slot definido. Selecione o horario de cada uma para receber notificacoes por email.</div>`
+    ?`<div class="msg warn" style="margin-bottom:12px">&#9888; ${semSlot.length} disciplina(s) sem turno definido. Selecione o turno de horario de cada uma para receber notificacoes por email.</div>`
     :'';
-  const slotOpts=`<option value="">-- slot --</option><option value="manha1">Manha 1 (07:30)</option><option value="manha2">Manha 2 (09:50+)</option><option value="tarde1">Tarde 1 (13:00)</option><option value="tarde2">Tarde 2 (14:00+)</option><option value="noite1">Noite 1 (18:00)</option><option value="noite2">Noite 2 (19:00+)</option>`;
-  el.innerHTML=aviso+`<table class="tbl"><thead><tr><th>Dia</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Slot</th><th></th></tr></thead><tbody>`+
+  const slotOpts=`<option value="">-- turno --</option><option value="manha1">1º Manhã (07:30)</option><option value="manha2">2º Manhã (09:50+)</option><option value="tarde1">1º Tarde (13:00)</option><option value="tarde2">2º Tarde (14:00+)</option><option value="noite1">1º Noite (18:00)</option><option value="noite2">2º Noite (19:00+)</option>`;
+  el.innerHTML=aviso+`<table class="tbl"><thead><tr><th>Dia</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Turno</th><th></th></tr></thead><tbody>`+
   d.materias.map(m=>`<tr>
     <td class="c-hora">${m.dia}</td><td class="c-turma">${m.turma}</td>
     <td>${m.disciplina}</td><td class="c-dim">${m.professor}</td>
@@ -288,11 +288,11 @@ async function setSlot(materia_id,slot){
   if(!slot)return;
   const d=await api('/api/atualizar-slot',{aluno_id:G.alunoId,materia_id,slot});
   if(d.erro){
-    document.getElementById('ger-pick').innerHTML=`<div class="msg error">Erro ao salvar slot: ${d.erro}</div>`;
+    document.getElementById('ger-pick').innerHTML=`<div class="msg error">Erro ao salvar turno: ${d.erro}</div>`;
     return;
   }
   loadGer();
-  document.getElementById('ger-pick').innerHTML='<div class="msg ok">Slot atualizado com sucesso.</div>';
+  document.getElementById('ger-pick').innerHTML='<div class="msg ok">Turno atualizado com sucesso.</div>';
   setTimeout(()=>{const el=document.getElementById('ger-pick');if(el)el.innerHTML='';},3000);
 }
 async function rmMateria(id){
@@ -311,7 +311,7 @@ async function gerBuscar(){
     const dia=document.getElementById('ger-dia').value;
     if(!dia){el.innerHTML='<div class="msg error">Selecione o dia antes de adicionar.</div>';return;}
     const gerSlot=document.getElementById('ger-slot').value;
-    if(!gerSlot){el.innerHTML='<div class="msg error">Selecione o slot (horario) antes de adicionar.</div>';return;}
+    if(!gerSlot){el.innerHTML='<div class="msg error">Selecione o turno de horario antes de adicionar.</div>';return;}
     const d=await api('/api/adicionar-materia',{aluno_id:G.alunoId,dia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor,slot:gerSlot});
     if(d.erro){el.innerHTML=`<div class="msg error">Erro ao adicionar: ${d.erro}</div>`;return;}
     el.innerHTML=`<div class="msg ok">&#10003; ${row.Disciplina} adicionada para ${dia} — ${SLOT_LABELS[gerSlot]}.</div>`;
@@ -362,7 +362,7 @@ async function cadBuscar(){
     const dia=document.getElementById('cad-dia').value;
     if(!dia){el.innerHTML='<div class="msg error">Selecione o dia antes de adicionar.</div>';return;}
     const cadSlot=document.getElementById('cad-slot').value;
-    if(!cadSlot){el.innerHTML='<div class="msg warn">Selecione o slot (horario) antes de adicionar.</div>';return;}
+    if(!cadSlot){el.innerHTML='<div class="msg warn">Selecione o turno de horario antes de adicionar.</div>';return;}
     const dup=G.cadMats.some(m=>m.dia===dia&&m.disciplina===row.Disciplina&&m.turma===row.Turma);
     if(dup){el.innerHTML='<div class="msg warn">Ja adicionada.</div>';return;}
     G.cadMats.push({dia,turma:row.Turma,disciplina:row.Disciplina,professor:row.Professor,slot:cadSlot});
@@ -380,7 +380,7 @@ async function cadSalvar(){
   if(!G.cadMats.length){msgEl.innerHTML='<div class="msg error">Adicione ao menos uma disciplina antes de salvar.</div>';return;}
   const semSlot=G.cadMats.filter(m=>!m.slot);
   if(semSlot.length){
-    msgEl.innerHTML=`<div class="msg error">&#9888; ${semSlot.length} disciplina(s) sem slot definido: ${semSlot.map(m=>m.disciplina.split('/').pop().trim()).join(', ')}. Selecione o horario de cada uma.</div>`;
+    msgEl.innerHTML=`<div class="msg error">&#9888; ${semSlot.length} disciplina(s) sem turno definido: ${semSlot.map(m=>m.disciplina.split('/').pop().trim()).join(', ')}. Selecione o turno de horario de cada uma.</div>`;
     return;
   }
   const receber_email=document.getElementById('btn-cad-email-toggle')?.getAttribute('data-ativo')!=='0';

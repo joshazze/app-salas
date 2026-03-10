@@ -434,18 +434,13 @@ def adm_email_custom():
         return jsonify({"erro": "Campos incompletos"}), 400
 
     mensagem_safe = html_lib.escape(mensagem).replace("\n", "<br>")
-    corpo = (
-        "<div style='background:#080c10;color:#c9d1d9;font-family:Courier New,monospace;padding:24px;max-width:600px'>"
-        "<div style='border-bottom:1px solid #1a2a3a;padding-bottom:12px;margin-bottom:20px'>"
-        "<span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>"
-        "<span style='color:#4a5a6a'> // </span>"
-        "<span style='color:#6e7a8a;font-size:12px'>IBtech</span>"
-        "</div>"
-        f"<div style='white-space:pre-wrap;font-size:14px'>{mensagem_safe}</div>"
-        "<div style='color:#4a5a6a;font-size:11px;margin-top:20px;border-top:1px solid #1a2a3a;padding-top:12px'>"
-        "Este email foi enviado pelo administrador do sistema IBtech."
-        "</div></div>"
+    mensagem_safe_already_set = True  # set above
+    content = (
+        f"<div style='white-space:pre-wrap;font-size:14px;color:#1a1a1a;line-height:1.7'>{mensagem_safe}</div>"
+        "<p style='margin:16px 0 0;font-size:11px;color:#888'>"
+        "Este email foi enviado pelo administrador do sistema IBSALA.</p>"
     )
+    corpo = vp._email_wrapper(content, 'Mensagem do administrador')
 
     def _enviar_lote():
         import time
@@ -555,55 +550,46 @@ def adm_email_teste():
         ("13:10", "13:50"), ("15:30", "16:10"), ("17:20", "23:00")
     ]
 
-    blocos_horario = ""
-    for inicio, fim in horarios:
-        blocos_horario += f"""
-        <div style='display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid #253d54'>
-          <span style='color:#1e90ff;font-size:13px;min-width:50px'>{inicio}</span>
-          <span style='color:#7a9ab5;font-size:12px'>&#8594;</span>
-          <span style='color:#9ab0c4;font-size:12px'>janela ate {fim} &mdash; aulas do turno enviadas</span>
-        </div>"""
-
-    df = get_df()
-    materias = vp.listar_materias_aluno(aluno_id)
-    aulas_semana = []
-    for _, dia, turma, disciplina, professor in materias:
-        aulas_semana.append(f"<div style='padding:5px 14px;border-bottom:1px solid #253d54'>"
-                            f"<span style='color:#1e90ff;min-width:80px;display:inline-block'>{dia}</span>"
-                            f"<span style='color:#dde6f0'>{disciplina}</span>"
-                            f"<span style='color:#7a9ab5;font-size:11px;margin-left:10px'>{turma}</span>"
-                            f"</div>")
-    materias_html = "".join(aulas_semana) if aulas_semana else "<div style='color:#7a9ab5;padding:10px 14px'>Nenhuma materia cadastrada.</div>"
-
-    corpo = f"""
-    <div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>
-      <div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>
-        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>
-        <span style='color:#7a9ab5'> // </span>
-        <span style='color:#9ab0c4;font-size:12px'>email de teste</span>
-      </div>
-
-      <p style='color:#ffc107;font-size:13px;margin-bottom:20px'>&#9432; Este e um email de teste enviado pelo administrador.</p>
-
-      <div style='margin-bottom:24px'>
-        <p style='color:#00d4ff;font-size:12px;letter-spacing:2px;margin-bottom:10px'>// HORARIOS DE ENVIO</p>
-        <div style='border:1px solid #253d54;background:#0d1117'>
-          {blocos_horario}
-        </div>
-        <p style='color:#7a9ab5;font-size:11px;margin-top:6px'>Os emails so sao enviados nos dias em que voce tem aulas no turno correspondente.</p>
-      </div>
-
-      <div style='margin-bottom:24px'>
-        <p style='color:#00d4ff;font-size:12px;letter-spacing:2px;margin-bottom:10px'>// SUAS MATERIAS CADASTRADAS</p>
-        <div style='border:1px solid #253d54;background:#0d1117'>
-          {materias_html}
-        </div>
-      </div>
-
-      <div style='color:#7a9ab5;font-size:11px;margin-top:20px;border-top:1px solid #253d54;padding-top:12px'>
-        &copy; Joshua Azze &amp; IBtech &mdash; <a href='mailto:salas.ibtech@gmail.com' style='color:#7a9ab5'>salas.ibtech@gmail.com</a>
-      </div>
-    </div>"""
+    # Build horarios table
+    horarios_rows = ''.join(
+        f"<tr>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;color:#1a73e8;font-weight:bold'>{ini}</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;color:#444'>até {fim}</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;color:#666;font-size:12px'>emails disparados</td>"
+        f"</tr>"
+        for ini, fim in horarios
+    )
+    DIA_ORDER = ['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO']
+    mat_rows = ''.join(
+        f"<tr>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;color:#1a73e8;font-weight:bold'>{r[1]}</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0'>{r[3]}</td>"
+        f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;color:#666;font-size:12px'>{r[2]}</td>"
+        f"</tr>"
+        for r in sorted(materias, key=lambda r: DIA_ORDER.index(r[1]) if r[1] in DIA_ORDER else 99)
+    ) or "<tr><td colspan='3' style='padding:10px 12px;color:#888'>Nenhuma matéria.</td></tr>"
+    content = (
+        "<div style='background:#fff3cd;border:1px solid #ffc107;padding:12px 14px;"
+        "margin-bottom:20px;color:#856404;font-size:13px'>"
+        "&#9432; Este é um email de teste enviado pelo administrador.</div>"
+        "<p style='font-weight:bold;margin:0 0 8px'>Horários de envio</p>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0' "
+        "style='border-collapse:collapse;border:1px solid #e0e0e0;margin-bottom:20px'>"
+        "<thead><tr>"
+        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Início</th>"
+        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Janela até</th>"
+        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Ação</th>"
+        f"</tr></thead><tbody>{horarios_rows}</tbody></table>"
+        "<p style='font-weight:bold;margin:0 0 8px'>Matérias cadastradas</p>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0' "
+        "style='border-collapse:collapse;border:1px solid #e0e0e0;margin-bottom:20px'>"
+        "<thead><tr>"
+        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Dia</th>"
+        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Disciplina</th>"
+        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Turma</th>"
+        f"</tr></thead><tbody>{mat_rows}</tbody></table>"
+    )
+    corpo = vp._email_wrapper(content, 'Email de teste')
 
     try:
         vp.enviar_email(email, "[IBSALA] Email de teste", corpo)

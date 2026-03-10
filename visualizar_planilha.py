@@ -628,10 +628,26 @@ def csv_hoje_existe():
     return os.path.exists(_csv_hoje())
 
 
+def _normalizar_colunas(df):
+    """Garante que a coluna de horário (pode vir como \"\", Unnamed: N, etc.) seja nomeada Horario."""
+    for col in list(df.columns):
+        if col == "" or col.startswith("Unnamed:"):
+            if "Horario" not in df.columns:
+                df = df.rename(columns={col: "Horario"})
+            else:
+                df["Horario"] = df[col].where(
+                    df[col].notna() & (df[col] != ""), df["Horario"]
+                )
+                df = df.drop(columns=[col])
+            break
+    return df
+
+
 def carregar_do_cache():
     csv = _csv_hoje()
     print(f"[cache] Carregando CSV do dia: {csv}")
-    return pd.read_csv(csv, encoding="utf-8-sig", dtype=str)
+    df = pd.read_csv(csv, encoding="utf-8-sig", dtype=str)
+    return _normalizar_colunas(df)
 
 
 def _excluir_csvs_anteriores():
@@ -720,7 +736,8 @@ def parsear_e_organizar(df_bruto):
             if any(v for k, v in registro.items() if k != "Categoria"):
                 todos_registros.append(registro)
 
-    return pd.DataFrame(todos_registros)
+    df = pd.DataFrame(todos_registros)
+    return _normalizar_colunas(df)
 
 
 # ── Busca ─────────────────────────────────────────────────────────────────────

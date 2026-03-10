@@ -57,11 +57,17 @@ function mkPickList(rows,onSelect){
 }
 async function init(){
   const d=await api('/api/status');G.statusData=d;if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
+  const meses=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const [,mes,dia2]=d.hoje.split('-');
+  const dataFmt=`${parseInt(dia2)} de ${meses[parseInt(mes)-1]}`;
   const capInfo=d.ultima_captura&&d.total>0
-    ?`ultima captura ${d.ultima_captura} &mdash; ${d.total} disciplinas capturadas`
+    ?`ultima captura ${d.ultima_captura} — ${d.total} disciplinas capturadas`
     :`ultima captura ${d.ultima_captura}`;
   document.getElementById('hdr-meta').innerHTML=
-    `<span>(${capInfo})</span> &mdash; <span>${d.total_disciplinas} disciplinas salvas</span> &mdash; <span>${d.total_alunos} alunos ativos</span>`;
+    `<span class="hl">${d.dia}</span> · <span class="hl">${dataFmt}</span>`
+    +` · <span>(${capInfo})</span>`
+    +` · <span>${d.total_disciplinas} disciplinas salvas</span>`
+    +` · <span>${d.total_alunos} alunos ativos</span>`;
   const ul=document.getElementById('cat-menu');
   let idx=1;
   Object.entries(d.categorias).forEach(([cat,n])=>{

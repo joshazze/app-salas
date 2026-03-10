@@ -576,6 +576,8 @@ def email_boas_vindas(username, email, materias):
         f"Digite seu username <strong>@{username}</strong> para entrar</div>"
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3.</span> "
         "Veja suas aulas do dia com sala, horario e professor em tempo real</div>"
+        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3b.</span> "
+        "Na busca livre, ative <strong>salas livres por slot</strong> para ver quais salas estao desocupadas em cada turno do dia &mdash; sem precisar de cadastro</div>"
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>4.</span> "
         "Em <em>Configuracoes</em>, adicione suas disciplinas e selecione o "
         "<strong>slot de horario</strong> de cada uma para ativar as notificacoes por email</div>"

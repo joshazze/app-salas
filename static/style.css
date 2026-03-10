@@ -91,3 +91,70 @@
 
     .slot-arrow{display:inline-block;transition:transform 0.25s ease}
     details[open] .slot-arrow{transform:rotate(90deg)}
+
+
+    /* ── Switch ───────────────────────────────────────────────────────────── */
+    .sw{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+    .sw-track{width:38px;height:21px;background:var(--border);border-radius:11px;
+      position:relative;transition:background 0.25s ease;flex-shrink:0}
+    .sw-track.on{background:var(--cyan)}
+    .sw-thumb{position:absolute;top:3px;left:3px;width:15px;height:15px;
+      background:#fff;border-radius:50%;
+      transition:transform 0.25s cubic-bezier(.4,0,.2,1),background 0.25s}
+    .sw-track.on .sw-thumb{transform:translateX(17px)}
+    .sw-label{font-size:12px;color:var(--text-muted);transition:color 0.25s}
+    .sw:hover .sw-label{color:var(--text)}
+
+    /* ── Keyframes ────────────────────────────────────────────────────────── */
+    @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+    /* ── Transição de telas ───────────────────────────────────────────────── */
+    .screen{opacity:0;pointer-events:none;transition:opacity 0.15s}
+    .screen.active{opacity:1;pointer-events:auto;animation:fadeUp 0.2s ease both}
+
+    /* ── Menu items ───────────────────────────────────────────────────────── */
+    .menu-item{transition:border-color 0.18s,background 0.18s,transform 0.12s}
+    .menu-item:active{transform:scale(0.985)}
+
+    /* ── Botões ───────────────────────────────────────────────────────────── */
+    .btn{transition:border-color 0.18s,color 0.18s,background 0.18s,transform 0.1s}
+    .btn:active{transform:scale(0.96)}
+    .btn-back{transition:color 0.18s,opacity 0.18s}
+
+    /* ── Mensagens de feedback ────────────────────────────────────────────── */
+    .msg{animation:slideDown 0.18s ease both}
+
+    /* ── Loading ──────────────────────────────────────────────────────────── */
+    .loading{animation:pulse 1.4s ease-in-out infinite}
+
+    /* ── Cards de aula ────────────────────────────────────────────────────── */
+    .aula-card{animation:fadeUp 0.22s ease both}
+
+    /* ── Linhas de tabela ─────────────────────────────────────────────────── */
+    .tbl tbody tr{animation:fadeIn 0.18s ease both}
+    .tbl tbody tr:nth-child(1){animation-delay:.02s}
+    .tbl tbody tr:nth-child(2){animation-delay:.04s}
+    .tbl tbody tr:nth-child(3){animation-delay:.06s}
+    .tbl tbody tr:nth-child(4){animation-delay:.08s}
+    .tbl tbody tr:nth-child(5){animation-delay:.10s}
+    .tbl tbody tr:nth-child(n+6){animation-delay:.12s}
+
+    /* ── Pick-list ────────────────────────────────────────────────────────── */
+    .pick-item{animation:fadeIn 0.15s ease both}
+    .pick-item:nth-child(1){animation-delay:.00s}
+    .pick-item:nth-child(2){animation-delay:.03s}
+    .pick-item:nth-child(3){animation-delay:.06s}
+    .pick-item:nth-child(4){animation-delay:.09s}
+    .pick-item:nth-child(n+5){animation-delay:.12s}
+
+    /* ── Conteudo dos details (slots salas livres) ────────────────────────── */
+    details[open]>div{animation:slideDown 0.2s ease both}
+
+    /* ── Painel cad-p2 ────────────────────────────────────────────────────── */
+    #cad-p2{animation:fadeUp 0.22s ease both}
+
+    /* ── Aula-card grupo ──────────────────────────────────────────────────── */
+    .cat-block{animation:fadeUp 0.2s ease both}

@@ -135,9 +135,7 @@ function toggleModoLivre(){
   _modoLivre=!_modoLivre;
   document.getElementById('busca-mode-normal').style.display=_modoLivre?'none':'block';
   document.getElementById('busca-mode-livre').style.display=_modoLivre?'block':'none';
-  const btn=document.getElementById('btn-toggle-livre');
-  btn.classList.toggle('primary',_modoLivre);
-  btn.innerHTML=_modoLivre?'&#10005; voltar para busca livre':'&#9632; ver salas livres agora';
+  document.getElementById('sw-track-livre').classList.toggle('on',_modoLivre);
   document.getElementById('busca-out').innerHTML='';
   document.getElementById('salas-livre-horario').textContent='';
   if(_modoLivre){

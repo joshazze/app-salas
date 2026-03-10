@@ -78,8 +78,11 @@
                oninput="doSalasLivres()" onkeydown="if(event.key==='Enter')doSalasLivres()"/>
       </div>
     </div>
-    <div style="margin:10px 0 4px;display:flex;gap:8px;align-items:center">
-      <button id="btn-toggle-livre" class="btn sm" onclick="toggleModoLivre()">&#9632; ver salas livres agora</button>
+    <div style="margin:10px 0 4px;display:flex;gap:10px;align-items:center">
+      <label class="sw" onclick="toggleModoLivre()">
+        <span class="sw-track" id="sw-track-livre"><span class="sw-thumb"></span></span>
+        <span class="sw-label">salas livres por slot</span>
+      </label>
       <span id="salas-livre-horario" style="font-size:11px;color:var(--text-muted)"></span>
     </div>
     <div id="busca-out"></div>
@@ -409,7 +412,7 @@
           </div>
           <div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">
             <span style="color:var(--blue);min-width:20px;font-weight:bold">3.</span>
-            <span style="color:var(--text-dim);font-size:13px">Informe seu email institucional</span>
+            <span style="color:var(--text-dim);font-size:13px">Informe seu email <strong style="color:var(--text)">institucional ou pessoal</strong> para receber os avisos</span>
           </div>
           <div style="display:flex;gap:12px;padding:8px 0">
             <span style="color:var(--blue);min-width:20px;font-weight:bold">4.</span>

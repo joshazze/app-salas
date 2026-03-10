@@ -146,6 +146,23 @@ def salas_livres_slots():
     return jsonify(resultado)
 
 
+@app.route("/api/salas-livres-slots")
+def salas_livres_slots():
+    df_hoje = get_df_hoje()
+    filtro = request.args.get("sala", "").strip().lower()
+    por_slot = vp.listar_salas_livres_por_slot(df_hoje)
+    resultado = {}
+    for slot, salas in por_slot.items():
+        if filtro:
+            salas = [s for s in salas if filtro in s.lower()]
+        resultado[slot] = {
+            "label":  vp.SLOTS[slot]["label"],
+            "total":  len(salas),
+            "salas":  salas,
+        }
+    return jsonify(resultado)
+
+
 @app.route("/api/salas-livres")
 def salas_livres():
     df_hoje = get_df_hoje()
@@ -450,7 +467,13 @@ def adm_aluno_bloquear():
     data = request.json or {}
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
-    vp.set_bloqueio_aluno(data["id"], data.get("bloqueado", True))
+    bloqueado = data.get("bloqueado", True)
+    username, email = vp.set_bloqueio_aluno(data["id"], bloqueado)
+    if bloqueado and email:
+        try:
+            vp.email_bloqueio(username, email)
+        except Exception:
+            pass
     return jsonify({"ok": True})
 
 

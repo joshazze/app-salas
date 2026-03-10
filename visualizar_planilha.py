@@ -168,6 +168,8 @@ def aluno_bloqueado(aluno_id):
 def set_bloqueio_aluno(aluno_id, bloqueado):
     with get_db() as con:
         con.execute("UPDATE alunos SET bloqueado=? WHERE id=?", (int(bloqueado), aluno_id))
+        row = con.execute("SELECT username, email FROM alunos WHERE id=?", (aluno_id,)).fetchone()
+    return (row[0], row[1]) if row else (None, None)
 
 
 def criar_aluno(username, email="", receber_email=1):
@@ -305,6 +307,36 @@ def listar_salas_livres(df_hoje, horario_atual=None):
     with get_db() as con:
         todas = [r[0] for r in con.execute("SELECT sala FROM salas_historico ORDER BY sala").fetchall()]
     return [s for s in todas if s not in ocupadas and s != ""]
+
+
+def listar_salas_livres_por_slot(df_hoje):
+    """Retorna dict slot -> [salas livres] para cada um dos 6 slots do dia.
+    Uma sala e considerada ocupada num slot se alguma aula da planilha
+    tiver Horario cujo inicio pertence a esse slot.
+    """
+    col = next((c for c in ["Salas", "Sala"] if c in df_hoje.columns), None)
+
+    # Mapear sala -> conjunto de slots em que ela esta ocupada
+    ocupadas_por_slot = {k: set() for k in SLOTS}
+    if col and "Horario" in df_hoje.columns:
+        for _, row in df_hoje[[col, "Horario"]].dropna().iterrows():
+            sala = str(row[col]).strip()
+            if not sala:
+                continue
+            slot = horario_para_slot(str(row["Horario"]).strip())
+            if slot:
+                ocupadas_por_slot[slot].add(sala)
+
+    with get_db() as con:
+        todas = [r[0] for r in con.execute(
+            "SELECT sala FROM salas_historico ORDER BY sala"
+        ).fetchall()]
+    todas = [s for s in todas if s]
+
+    return {
+        slot: [s for s in todas if s not in ocupadas_por_slot[slot]]
+        for slot in SLOTS
+    }
 
 
 def listar_salas_livres_por_slot(df_hoje):
@@ -563,6 +595,37 @@ def email_boas_vindas(username, email, materias):
 
     corpo = _email_wrapper(content, "Bem-vindo/a!")
     enviar_email(email, assunto, corpo)
+
+def email_bloqueio(username, email):
+    """Envia email avisando que a conta foi bloqueada."""
+    if not email:
+        return
+    content = f"""
+<p style="margin:0 0 16px;font-size:14px;color:#1a1a1a">
+  Ola, <strong>{username}</strong>.
+</p>
+
+<div style="background:#fff0f0;border:1px solid #e53935;border-left:4px solid #e53935;padding:16px;margin-bottom:20px">
+  <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#e53935;letter-spacing:1px">CONTA BLOQUEADA</p>
+  <p style="margin:0;font-size:13px;color:#b71c1c;line-height:1.7">
+    Sua conta no <strong>IBSALA</strong> foi <strong style="color:#e53935">bloqueada</strong> por um administrador.
+    Enquanto estiver bloqueada, voce <strong>nao recebera notificacoes diarias</strong> de aulas
+    e o acesso a sua conta estara restrito.
+  </p>
+</div>
+
+<p style="margin:0 0 16px;font-size:13px;color:#444;line-height:1.7">
+  Se acredita que isso foi um erro, entre em contato respondendo este email.
+</p>
+
+<p style="margin:0;font-size:13px;color:#444;line-height:1.7">
+  &mdash; Equipe IBSALA
+</p>
+"""
+    assunto = "[IBSALA] Sua conta foi bloqueada"
+    corpo = _email_wrapper(content, "Conta bloqueada")
+    enviar_email(email, assunto, corpo)
+
 
 def email_recuperar_username(username, email):
     """Envia email com o username do aluno."""

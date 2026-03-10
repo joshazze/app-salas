@@ -72,10 +72,11 @@
     .add-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.add-row input{flex:1;min-width:160px}
     footer{background:var(--bg2);border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--text-muted);letter-spacing:1px;padding:16px 20px;width:100%;flex-shrink:0;font-weight:650}
     @media(min-width:768px){body{font-size:16px}.hdr-title{font-size:22px}.hdr-sub,.hdr-meta,.hdr-tagline{font-size:14px}.stitle{font-size:14px}.menu-label{font-size:16px}.menu-key{font-size:17px}.menu-badge{font-size:13px}.btn{font-size:15px;padding:11px 22px}.btn.sm{font-size:13px;padding:8px 14px}.btn-back{font-size:14px}input[type=text],input[type=password],.iprefix,select{font-size:16px}.tbl{font-size:14px}.tbl th{font-size:13px}.msg{font-size:15px}.pick-item{font-size:14px}.dt-item{font-size:14px}.aula-card-title{font-size:16px}.aula-card-meta{font-size:14px}.loading{font-size:15px}footer{font-size:13px}}
-    body.travado .menu-item:not(.adm-item){pointer-events:none;opacity:0.45;border-color:var(--red)!important}
+    body.travado .menu-item:not(.adm-item){pointer-events:none;border-color:var(--red)!important;background:#1a0808!important}
     body.travado .menu-item:not(.adm-item) .menu-label{color:var(--red)!important}
     body.travado .menu-item:not(.adm-item) .menu-key{color:var(--red)!important}
-    body.travado .btn:not(.adm-btn){pointer-events:none;border-color:var(--red)!important;color:var(--red)!important}
+    body.travado .menu-item:not(.adm-item) .menu-badge{color:#7a2020!important}
+    body.travado .btn:not(.adm-btn){pointer-events:none;border-color:var(--red)!important;color:var(--red)!important;background:#1a0808!important}
     #banner-trava{display:none;background:#1a0a0a;border:1px solid var(--red);color:var(--red);padding:14px 20px;margin-bottom:22px;text-align:center;font-size:15px;letter-spacing:1px}
     body.travado #banner-trava{display:block}
     @media(max-width:600px){.tbl{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}.btn-row{flex-direction:column}.igroup{flex-wrap:nowrap}.add-row{flex-direction:column}.add-row select,.add-row input,.add-row .btn{width:100%}}

@@ -249,6 +249,24 @@ def adicionar_materia():
     return jsonify({"ok": True})
 
 
+@app.route("/api/atualizar-slot", methods=["POST"])
+def atualizar_slot():
+    data = request.json or {}
+    aluno_id   = data.get("aluno_id")
+    materia_id = data.get("materia_id")
+    slot       = data.get("slot") or None
+    if not aluno_id or not materia_id:
+        return jsonify({"erro": "Campos obrigatorios ausentes"}), 400
+    with vp.get_db() as con:
+        rows = con.execute(
+            "UPDATE materias SET slot=? WHERE id=? AND aluno_id=?",
+            (slot, materia_id, aluno_id)
+        ).rowcount
+    if rows == 0:
+        return jsonify({"erro": "Materia nao encontrada"}), 404
+    return jsonify({"ok": True})
+
+
 @app.route("/api/remover-materia", methods=["POST"])
 def remover_materia():
     data = request.json or {}

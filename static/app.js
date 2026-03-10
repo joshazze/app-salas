@@ -507,7 +507,24 @@ function limparSelecao(){
 function atualizarContador(){
   const n=admAlunosSel.size;
   const el=document.getElementById('pick-counter');
-  if(el)el.innerHTML=n?`<span style="color:var(--cyan)">${n} selecionado(s)</span> &mdash; <button class="btn sm danger" onclick="limparSelecao()" style="padding:1px 7px">limpar</button>`:'0 selecionado(s)';
+  if(el)el.innerHTML=n?`<span style="color:var(--cyan)">${n} selecionado(s)</span> &mdash; <button class="btn sm danger" onclick="limparSelecao()" style="padding:1px 7px">limpar tudo</button>`:'0 selecionado(s)';
+  const chips=document.getElementById('pick-chips');
+  if(!chips)return;
+  if(!n){chips.style.display='none';chips.innerHTML='';return;}
+  chips.style.display='flex';
+  chips.innerHTML=[...admAlunosSel.values()].map(u=>
+    `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;"
+    +`background:var(--bg3);border:1px solid var(--cyan);font-size:11px;color:var(--cyan)">"
+    +`@${u.username}"
+    +`<button onclick="removerChip('${u.email}')" style="background:none;border:none;color:var(--red);"
+    +`cursor:pointer;font-size:12px;padding:0 2px;line-height:1">&#10005;</button></span>`
+  ).join('');
+}
+function removerChip(email){
+  admAlunosSel.delete(email);
+  const cb=document.querySelector(`#adm-alunos-pick input[data-email="${email}"]`);
+  if(cb){cb.checked=false;cb.closest('label').style.background='transparent';}
+  atualizarContador();
 }
 async function emailTodos(){
   const msg=document.getElementById('email-todos-msg');
@@ -535,41 +552,41 @@ async function emailCustom(){
 }
 
 // ── Teste de email com busca ──────────────────────────────────────────────────
-let _testeAlunos=[];
-let _testeDebounce=null;
-let _testeSel=null; // {id, username, email}
+let _testeSel=null;
 
 async function loadTesteAlunos(){
-  _testeAlunos=[];_testeSel=null;
-  const wrap=document.getElementById('teste-aluno-wrap');
-  if(!wrap)return;
-  wrap.innerHTML=`
-    <div style="position:relative;flex:1;min-width:180px">
+  _testeSel=null;
+  const area=document.getElementById('teste-search-area');
+  if(!area)return;
+  area.innerHTML=`
+    <div style="position:relative">
       <div class="igroup" style="margin:0">
         <span class="iprefix">@</span>
-        <input type="text" id="teste-search" placeholder="buscar aluno..." autocomplete="off"
-          oninput="debounce(buscaTeste,350)()" onfocus="buscaTeste()"
-          style="flex:1"/>
+        <input type="text" id="teste-search" placeholder="buscar aluno por username ou email..."
+          autocomplete="off" oninput="debouncedBuscaTeste()" style="flex:1"/>
       </div>
       <div id="teste-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:99;
         background:var(--bg2);border:1px solid var(--cyan);max-height:200px;overflow-y:auto"></div>
-    </div>
-    <div id="teste-sel-badge" style="font-size:11px;color:var(--text-dim);align-self:center"></div>`;
+    </div>`;
+  const sendRow=document.getElementById('teste-send-row');
+  if(sendRow)sendRow.style.display='none';
 }
+const debouncedBuscaTeste=debounce(buscaTeste,350);
 async function buscaTeste(){
   const inp=document.getElementById('teste-search');
   const sug=document.getElementById('teste-suggestions');
   if(!inp||!sug)return;
   const q=inp.value.trim();
+  if(!q){sug.style.display='none';return;}
   const d=await api('/api/adm/alunos/buscar',{...admCreds(),termo:q,limite:20});
   const lista=(d.registros||[]).filter(r=>r.email);
   if(!lista.length){sug.style.display='none';return;}
   sug.style.display='block';
   sug.innerHTML=lista.map(r=>`
     <div onclick="selecionarTestAluno(${r.id},'${r.username}','${r.email}')"
-      style="padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);
-      display:flex;gap:8px;align-items:center" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
-      <span style="color:var(--text);min-width:80px">${r.username}</span>
+      style="padding:8px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);
+      display:flex;gap:10px;align-items:center" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+      <span style="color:var(--text);min-width:90px;font-weight:bold">@${r.username}</span>
       <span style="color:var(--text-muted)">${r.email}</span>
     </div>`).join('');
 }
@@ -577,10 +594,13 @@ function selecionarTestAluno(id,username,email){
   _testeSel={id,username,email};
   const inp=document.getElementById('teste-search');
   const sug=document.getElementById('teste-suggestions');
-  const badge=document.getElementById('teste-sel-badge');
-  if(inp)inp.value=username;
+  if(inp)inp.value='';
   if(sug)sug.style.display='none';
-  if(badge)badge.innerHTML=`&#10003; <span style="color:var(--cyan)">${username}</span> &lt;${email}&gt;`;
+  const sendRow=document.getElementById('teste-send-row');
+  const info=document.getElementById('teste-sel-info');
+  if(info)info.innerHTML=`&#10003; <strong>@${username}</strong> &lt;${email}&gt;`;
+  if(sendRow)sendRow.style.display='flex';
+  document.getElementById('email-teste-msg').innerHTML='';
 }
 document.addEventListener('click',e=>{
   const sug=document.getElementById('teste-suggestions');
@@ -588,7 +608,7 @@ document.addEventListener('click',e=>{
 });
 async function emailTeste(){
   const msg=document.getElementById('email-teste-msg');
-  if(!_testeSel){msg.innerHTML='<div class="msg error">Selecione um aluno.</div>';return;}
+  if(!_testeSel){msg.innerHTML='<div class="msg error">Selecione um aluno primeiro.</div>';return;}
   msg.innerHTML='<div class="loading">enviando...</div>';
   const d=await api('/api/adm/email/teste',{...admCreds(),aluno_id:_testeSel.id});
   if(d.erro){msg.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}

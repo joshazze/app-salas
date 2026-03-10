@@ -1,5 +1,5 @@
 const G={alunoId:null,username:null,statusData:null,cadUser:null,cadMats:[]};
-function goto(id){
+function goto(id,_fromPop){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   if(id==='s-hoje')loadHoje();
@@ -8,6 +8,7 @@ function goto(id){
   if(id==='s-adm-disc')loadAdmDisc();
   if(id==='s-adm-alunos')loadAdmAlunos();
   if(id==='s-adm-email'){loadAdmAlunosPick();loadTesteAlunos();}
+  if(!_fromPop)history.pushState({screen:id},'','');
 }
 async function api(url,body){
   const o={headers:{'Content-Type':'application/json'}};
@@ -785,23 +786,17 @@ init();
 
 document.getElementById("footer-year").textContent=new Date().getFullYear();
 
-// ── Swipe-back (borda esquerda → direita) ─────────────────────────────────
+// ── Swipe-back nativo (History API) ──────────────────────────────────────────
+window.addEventListener('popstate',function(e){
+  const btn=document.querySelector('.screen.active .btn-back');
+  if(btn)btn.click();
+  else if(e.state&&e.state.screen)goto(e.state.screen,true);
+});
+// ── Feedback tatil em botoes (Android/Chrome) ─────────────────────────────
 (function(){
-  const EDGE=30, MIN_DIST=60, MAX_VERT=80;
-  let sx=0,sy=0,tracking=false;
+  if(!navigator.vibrate)return;
   document.addEventListener('touchstart',function(e){
-    const t=e.touches[0];
-    tracking=t.clientX<=EDGE;
-    if(tracking){sx=t.clientX;sy=t.clientY;}
-  },{passive:true});
-  document.addEventListener('touchend',function(e){
-    if(!tracking)return;
-    tracking=false;
-    const t=e.changedTouches[0];
-    const dx=t.clientX-sx, dy=Math.abs(t.clientY-sy);
-    if(dx>=MIN_DIST&&dy<=MAX_VERT){
-      const btn=document.querySelector('.screen.active .btn-back');
-      if(btn)btn.click();
-    }
+    const t=e.target.closest('button,.btn,.menu-item,label.sw,.btn-back,summary');
+    if(t)navigator.vibrate(8);
   },{passive:true});
 })();

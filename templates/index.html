@@ -289,10 +289,10 @@
     <div style="margin-bottom:20px;border:1px solid var(--border);padding:14px;background:var(--bg2)">
       <p style="color:var(--cyan);font-size:12px;margin-bottom:10px">// email de teste</p>
       <p style="color:var(--text-dim);font-size:12px;margin-bottom:10px">Envia um email de teste com os horarios de notificacao e materias do usuario selecionado.</p>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <div id="teste-aluno-wrap" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
         <div class="igroup" style="flex:1;margin:0;min-width:180px">
           <span class="iprefix">@</span>
-          <select id="teste-aluno-sel" style="flex:1"></select>
+          <input type="text" id="teste-search" placeholder="buscar aluno..." autocomplete="off"/>
         </div>
         <button class="btn adm-btn" onclick="emailTeste()">&#9993; enviar teste</button>
       </div>

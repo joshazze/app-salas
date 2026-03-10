@@ -468,11 +468,19 @@ def email_boas_vindas(username, email, materias):
                 f"color:#1a73e8;text-transform:uppercase;letter-spacing:1px'>{dia}</p>"
             )
             for m in mats:
+                slot_label = ''
+                if m.get("slot"):
+                    slot_labels = {"manha1":"Manha 1 (07:30)","manha2":"Manha 2 (09:50)",
+                                   "tarde1":"Tarde 1 (13:00)","tarde2":"Tarde 2 (14:00)",
+                                   "noite1":"Noite 1 (18:00)","noite2":"Noite 2 (19:00)"}
+                    slot_label = f" &middot; <span style='color:#1a73e8'>{slot_labels.get(m['slot'], m['slot'])}</span>"
+                else:
+                    slot_label = " &middot; <span style='color:#e53935'>sem slot &mdash; configure em Configuracoes</span>"
                 linhas_materias += (
                     f"<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
                     f"padding:10px 14px;margin-bottom:6px;background:#f8f9ff'>"
                     f"<div style='font-weight:bold;color:#1a1a1a;font-size:13px'>{m['disciplina']}</div>"
-                    f"<div style='color:#666;font-size:11px;margin-top:3px'>{m['turma']} &middot; {m['professor']}</div>"
+                    f"<div style='color:#666;font-size:11px;margin-top:3px'>{m['turma']} &middot; {m['professor']}{slot_label}</div>"
                     f"</div>"
                 )
         materias_bloco = (
@@ -505,9 +513,14 @@ def email_boas_vindas(username, email, materias):
         f"<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>2.</span> "
         f"Digite seu username <strong>@{username}</strong> para entrar</div>"
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3.</span> "
-        "Veja suas aulas do dia com sala, horário e professor em tempo real</div>"
-        "<div><span style='color:#1a73e8;font-weight:bold'>4.</span> "
-        "Gerencie suas matérias em <em>Configurações</em> a qualquer momento</div>"
+        "Veja suas aulas do dia com sala, horario e professor em tempo real</div>"
+        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>4.</span> "
+        "Em <em>Configuracoes</em>, adicione suas disciplinas e selecione o "
+        "<strong>slot de horario</strong> de cada uma para ativar as notificacoes por email</div>"
+        "<div style='margin-top:10px;padding:10px 12px;background:#fff3cd;border:1px solid #ffc107;"
+        "font-size:12px;color:#856404'>"
+        "&#9432; Voce so recebera emails de aviso se cada disciplina tiver um slot definido. "
+        "Acesse Configuracoes e atribua o turno correto a cada materia.</div>"
         "</div>"
     )
 

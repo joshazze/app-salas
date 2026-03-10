@@ -374,7 +374,8 @@
         O <span style="color:var(--blue);font-weight:bold">IBSALA</span> e uma plataforma do
         <span style="color:var(--cyan)">IBtech</span> para consulta de salas e horarios de aula em tempo real.
         Os dados sao capturados diariamente da planilha oficial da instituicao e ficam disponiveis
-        para qualquer aluno, sem precisar de login.
+        para qualquer aluno, sem precisar de login. Alunos cadastrados recebem um email
+        <strong style="color:var(--text)">30 minutos antes de cada aula</strong>, com a sala exata daquela disciplina.
       </p>
 
       <div style="border-left:2px solid var(--blue);padding-left:14px;margin-bottom:24px">
@@ -390,7 +391,7 @@
           </div>
           <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
             <span style="color:var(--blue);font-weight:bold;font-size:13px">Notificacao por email</span>
-            <p style="color:var(--text-dim);font-size:12px;margin-top:4px;line-height:1.6">Alunos cadastrados recebem um email automatico antes de cada turno com o resumo das suas aulas do dia.</p>
+            <p style="color:var(--text-dim);font-size:12px;margin-top:4px;line-height:1.6">Alunos cadastrados recebem um email automatico <strong style="color:var(--text)">30 minutos antes de cada aula</strong>, com a sala, o horario e o professor daquela disciplina especifica. Cada turno gera um email separado &mdash; voce nao recebe informacoes de aulas que ainda nao estao proximas.</p>
           </div>
         </div>
       </div>
@@ -412,7 +413,7 @@
           </div>
           <div style="display:flex;gap:12px;padding:8px 0">
             <span style="color:var(--blue);min-width:20px;font-weight:bold">4.</span>
-            <span style="color:var(--text-dim);font-size:13px">Adicione suas materias em <span style="color:var(--text)">Configuracoes</span> para comecar a usar</span>
+            <span style="color:var(--text-dim);font-size:13px">Adicione suas materias em <span style="color:var(--text)">Configuracoes</span>, selecionando o <strong style="color:var(--text)">slot de horario</strong> de cada disciplina para ativar as notificacoes</span>
           </div>
         </div>
       </div>
@@ -439,7 +440,14 @@
               <span style="color:var(--yellow);font-size:11px">&#9632;</span>
               <span style="color:var(--yellow);font-weight:bold;font-size:13px">Notificacoes automaticas</span>
             </div>
-            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">O scheduler dispara emails diarios cruzando as materias do banco com a planilha do dia para montar o resumo personalizado de cada aluno.</p>
+            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">O scheduler dispara emails em 6 janelas diarias (uma por slot de horario), cruzando duas confirmacoes: a disciplina do aluno precisa aparecer na planilha do dia <em>e</em> o horario na planilha precisa bater com o slot cadastrado. Isso garante que cada email chegue 30 minutos antes da aula certa, sem repetir informacoes de outros turnos.</p>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="color:var(--yellow);font-size:11px">&#9632;</span>
+              <span style="color:var(--yellow);font-weight:bold;font-size:13px">Slots de horario</span>
+            </div>
+            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">Cada disciplina cadastrada tem um slot &mdash; Manha 1 (07:30), Manha 2 (09:50), Tarde 1 (13:00), Tarde 2 (14:00), Noite 1 (18:00) ou Noite 2 (19:00). O slot e selecionado pelo proprio aluno no momento do cadastro e pode ser alterado a qualquer momento em Configuracoes. Disciplinas sem slot nao geram notificacao.</p>
           </div>
           <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">

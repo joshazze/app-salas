@@ -73,7 +73,7 @@ async function init(){
   const _aviso=document.getElementById('main-trava-aviso');
   if(_aviso)_aviso.style.display=d.travado?'block':'none';
   const meses=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  const [,mes,dia2]=d.hoje.split('-');
+  const [,mes,dia2]=(d.hoje||'2000-01-01').split('-');
   const dataFmt=`${parseInt(dia2)} de ${meses[parseInt(mes)-1]}`;
   const _min=d.ultima_captura_min;
   const _capStr=_min>=0?(_min===0?'agora mesmo':_min<60?(_min===1?'ha 1 min':`ha ${_min} min`):(_min<120?'ha 1 h':`ha ${Math.round(_min/60)} h`)):'--';

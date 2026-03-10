@@ -49,7 +49,7 @@ def check_adm(data):
 def verificar_trava():
     if not site_travado():
         return
-    if request.path.startswith("/api/adm") or request.path == "/":
+    if request.path.startswith("/api/adm") or request.path in ("/", "/api/status"):
         return
     if request.path.startswith("/api/"):
         return jsonify({"erro": "Site temporariamente indisponivel."}), 503

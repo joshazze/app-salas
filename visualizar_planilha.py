@@ -302,12 +302,15 @@ def _gmail_service():
     return build("gmail", "v1", credentials=creds)
 
 
+REMETENTE = "IBSALA <salas.ibtech@gmail.com>"
+
 def enviar_email(para, assunto, corpo_html):
     import base64
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
 
     msg = MIMEMultipart("alternative")
+    msg["From"]    = REMETENTE
     msg["To"]      = para
     msg["Subject"] = assunto
     msg.attach(MIMEText(corpo_html, "html", "utf-8"))
@@ -318,176 +321,174 @@ def enviar_email(para, assunto, corpo_html):
 
 
 
+
+def _email_wrapper(content: str, subtitle: str = "IBtech") -> str:
+    """Gera HTML completo do email com fundo branco e letras pretas."""
+    return (
+        "<!DOCTYPE html><html lang='pt-BR'><head>"
+        "<meta charset='UTF-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "</head><body style='margin:0;padding:0;background:#f4f4f4'>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='background:#f4f4f4'><tr><td>"
+        "<table align='center' width='600' cellpadding='0' cellspacing='0' border='0' "
+        "style='background:#ffffff;max-width:600px;margin:24px auto;"
+        "font-family:Arial,Helvetica,sans-serif;border:1px solid #e0e0e0'>"
+        "<tr><td style='background:#1a73e8;padding:20px 28px'>"
+        "<span style='color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:3px'>IBSALA</span>"
+        f"<span style='color:#a8c7fa;font-size:13px;margin-left:10px'>// {subtitle}</span>"
+        "</td></tr>"
+        f"<tr><td style='padding:28px;color:#1a1a1a;font-size:14px;line-height:1.7'>{content}</td></tr>"
+        "<tr><td style='background:#f4f4f4;padding:16px 28px;border-top:1px solid #e0e0e0'>"
+        "<p style='margin:0;font-size:11px;color:#757575;font-family:Arial,Helvetica,sans-serif'>"
+        "&copy; Joshua Azze &amp; IBtech &mdash; "
+        "<a href='mailto:salas.ibtech@gmail.com' style='color:#1a73e8;text-decoration:none'>"
+        "salas.ibtech@gmail.com</a></p></td></tr>"
+        "</table></td></tr></table></body></html>"
+    )
+
+
 def email_boas_vindas(username, email, materias):
     """Envia email de boas-vindas após cadastro."""
     assunto = f"[IBSALA] Bem-vindo/a, {username}!"
 
+    DIA_ORDER = ['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO']
+
     if materias:
-        linhas_materias = ""
         dias = {}
         for m in materias:
             dias.setdefault(m["dia"], []).append(m)
-        for dia, mats in dias.items():
-            linhas_materias += f"<div style='color:#1e90ff;font-size:11px;letter-spacing:1px;margin:14px 0 6px;text-transform:uppercase'>{dia}</div>"
+        linhas_materias = ""
+        for dia in sorted(dias.keys(), key=lambda d: DIA_ORDER.index(d) if d in DIA_ORDER else 99):
+            mats = dias[dia]
+            linhas_materias += (
+                f"<p style='margin:16px 0 6px;font-size:12px;font-weight:bold;"
+                f"color:#1a73e8;text-transform:uppercase;letter-spacing:1px'>{dia}</p>"
+            )
             for m in mats:
                 linhas_materias += (
-                    f"<div style='border:1px solid #253d54;padding:10px 14px;background:#0d1117;margin-bottom:6px'>"
-                    f"<div style='color:#00d4ff;font-size:13px'>{m['disciplina']}</div>"
-                    f"<div style='color:#7a9ab5;font-size:11px;margin-top:3px'>{m['turma']} &middot; {m['professor']}</div>"
+                    f"<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
+                    f"padding:10px 14px;margin-bottom:6px;background:#f8f9ff'>"
+                    f"<div style='font-weight:bold;color:#1a1a1a;font-size:13px'>{m['disciplina']}</div>"
+                    f"<div style='color:#666;font-size:11px;margin-top:3px'>{m['turma']} &middot; {m['professor']}</div>"
                     f"</div>"
                 )
-        materias_html = (
-            f"<p style='color:#dde6f0;font-size:13px;margin-bottom:12px'>Suas materias cadastradas:</p>"
-            f"{linhas_materias}"
+        materias_bloco = (
+            "<p style='font-weight:bold;margin:0 0 4px'>Suas matérias cadastradas:</p>"
+            + linhas_materias
         )
     else:
-        materias_html = (
-            "<div style='border:1px solid #253d54;padding:14px;background:#0d1117;color:#ffc107;font-size:13px'>"
-            "&#9888; Voce ainda nao adicionou nenhuma materia.<br/>"
-            "<span style='color:#9ab0c4;font-size:12px'>Acesse o site e adicione suas disciplinas para receber notificacoes de sala.</span>"
+        materias_bloco = (
+            "<div style='border:1px solid #f5c518;background:#fffbea;padding:14px;color:#856404;font-size:13px'>"
+            "&#9888; Você ainda não adicionou nenhuma matéria.<br/>"
+            "<span style='font-size:12px'>Acesse o site e adicione suas disciplinas para receber notificações de sala.</span>"
             "</div>"
         )
 
-    corpo = (
-        "<div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>"
-        "<div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>"
-        "<span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>"
-        "<span style='color:#7a9ab5'> // </span>"
-        "<span style='color:#9ab0c4;font-size:12px'>IBtech</span>"
+    acesso_bloco = (
+        "<div style='background:#f8f9ff;border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
+        "padding:14px;margin-bottom:20px'>"
+        "<p style='margin:0 0 6px;font-size:12px;color:#666;font-weight:bold'>SEU ACESSO</p>"
+        f"<p style='margin:0 0 4px;font-size:14px'>Username: <strong style='color:#1a73e8'>@{username}</strong></p>"
+        "<p style='margin:0;font-size:12px;color:#666'>Use esse username para entrar no site. Não é necessária senha.</p>"
         "</div>"
-        "<p style='color:#00e676;font-size:15px;margin-bottom:6px'>&#10003; Cadastro realizado com sucesso!</p>"
-        f"<p style='font-size:13px;margin-bottom:20px'>Ola, <span style='color:#1e90ff'>{username}</span>. Seja bem-vindo/a ao IBSALA.</p>"
-        "<div style='border:1px solid #253d54;background:#0d1117;padding:14px;margin-bottom:20px'>"
-        "<p style='color:#00d4ff;font-size:11px;letter-spacing:2px;margin-bottom:10px'>// SEU ACESSO</p>"
-        f"<p style='font-size:13px;margin-bottom:4px'>Username: <span style='color:#1e90ff'>@{username}</span></p>"
-        "<p style='color:#7a9ab5;font-size:12px'>Use esse username para entrar no site. Nao e necessaria senha.</p>"
-        "</div>"
-        "<div style='border:1px solid #253d54;background:#0d1117;padding:14px;margin-bottom:20px'>"
-        "<p style='color:#00d4ff;font-size:11px;letter-spacing:2px;margin-bottom:12px'>// COMO USAR O IBSALA</p>"
-        "<div style='margin-bottom:8px'><span style='color:#ffc107'>1.</span>"
-        " <span style='color:#dde6f0;font-size:13px'>Acesse </span>"
-        "<a href='https://ibsala.com.br' style='color:#1e90ff'>ibsala.com.br</a>"
-        "<span style='color:#9ab0c4;font-size:12px'> e clique em Estou cadastrado</span></div>"
-        f"<div style='margin-bottom:8px'><span style='color:#ffc107'>2.</span>"
-        f" <span style='color:#dde6f0;font-size:13px'>Digite seu username </span>"
-        f"<span style='color:#1e90ff'>@{username}</span>"
-        "<span style='color:#9ab0c4;font-size:12px'> para entrar</span></div>"
-        "<div style='margin-bottom:8px'><span style='color:#ffc107'>3.</span>"
-        " <span style='color:#dde6f0;font-size:13px'>Veja suas aulas do dia</span>"
-        "<span style='color:#9ab0c4;font-size:12px'> com sala, horario e professor em tempo real</span></div>"
-        "<div><span style='color:#ffc107'>4.</span>"
-        " <span style='color:#dde6f0;font-size:13px'>Gerencie suas materias</span>"
-        "<span style='color:#9ab0c4;font-size:12px'> em Configuracoes a qualquer momento</span></div>"
-        "</div>"
-        "<div style='border:1px solid #253d54;background:#0d1117;padding:14px;margin-bottom:20px'>"
-        "<p style='color:#00d4ff;font-size:11px;letter-spacing:2px;margin-bottom:12px'>// O QUE VOCE TEM ACESSO</p>"
-        "<div style='display:flex;gap:8px;margin-bottom:8px;align-items:flex-start'>"
-        "<span style='color:#00e676;min-width:16px'>&#10003;</span><div>"
-        "<span style='color:#dde6f0;font-size:13px'>Aulas do dia</span>"
-        "<p style='color:#7a9ab5;font-size:11px;margin-top:2px'>Sala, horario e professor das suas disciplinas, atualizado diariamente</p>"
-        "</div></div>"
-        "<div style='display:flex;gap:8px;margin-bottom:8px;align-items:flex-start'>"
-        "<span style='color:#00e676;min-width:16px'>&#10003;</span><div>"
-        "<span style='color:#dde6f0;font-size:13px'>Email diario automatico</span>"
-        "<p style='color:#7a9ab5;font-size:11px;margin-top:2px'>Receba um resumo das suas aulas antes de cada turno</p>"
-        "</div></div>"
-        "<div style='display:flex;gap:8px;margin-bottom:8px;align-items:flex-start'>"
-        "<span style='color:#00e676;min-width:16px'>&#10003;</span><div>"
-        "<span style='color:#dde6f0;font-size:13px'>Consulta livre</span>"
-        "<p style='color:#7a9ab5;font-size:11px;margin-top:2px'>Busque qualquer sala, turma ou professor sem precisar de login</p>"
-        "</div></div>"
-        "<div style='display:flex;gap:8px;align-items:flex-start'>"
-        "<span style='color:#00e676;min-width:16px'>&#10003;</span><div>"
-        "<span style='color:#dde6f0;font-size:13px'>Dados sempre atualizados</span>"
-        "<p style='color:#7a9ab5;font-size:11px;margin-top:2px'>A planilha oficial e capturada automaticamente todo dia</p>"
-        "</div></div>"
-        "</div>"
-        f"{materias_html}"
-        "<div style='color:#7a9ab5;font-size:11px;margin-top:24px;border-top:1px solid #253d54;padding-top:12px'>"
-        "Duvidas? Fale com a gente: <a href='mailto:salas.ibtech@gmail.com' style='color:#7a9ab5'>salas.ibtech@gmail.com</a><br/>"
-        "&copy; Joshua Azze &amp; IBtech &mdash; Todos os direitos reservados."
-        "</div></div>"
     )
 
-    enviar_email(email, assunto, corpo)
+    como_usar = (
+        "<div style='background:#f8f9ff;border:1px solid #e0e0e0;padding:14px;margin-bottom:20px'>"
+        "<p style='margin:0 0 10px;font-size:12px;color:#666;font-weight:bold'>COMO USAR O IBSALA</p>"
+        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>1.</span> "
+        "Acesse <a href='https://ibsala.com.br' style='color:#1a73e8'>ibsala.com.br</a>"
+        " e clique em <em>Estou cadastrado</em></div>"
+        f"<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>2.</span> "
+        f"Digite seu username <strong>@{username}</strong> para entrar</div>"
+        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3.</span> "
+        "Veja suas aulas do dia com sala, horário e professor em tempo real</div>"
+        "<div><span style='color:#1a73e8;font-weight:bold'>4.</span> "
+        "Gerencie suas matérias em <em>Configurações</em> a qualquer momento</div>"
+        "</div>"
+    )
 
+    content = (
+        f"<p style='margin:0 0 20px'>Olá, <strong>{username}</strong>! Bem-vindo/a ao <strong>IBSALA</strong>.</p>"
+        + acesso_bloco
+        + como_usar
+        + materias_bloco
+    )
+
+    corpo = _email_wrapper(content, "Bem-vindo/a!")
+    enviar_email(email, assunto, corpo)
 
 def email_recuperar_username(username, email):
     """Envia email com o username do aluno."""
-    assunto = "[IBSALA] Recuperacao de username"
-    corpo = (
-        "<div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>"
-        "<div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>"
-        "<span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>"
-        "<span style='color:#7a9ab5'> // </span>"
-        "<span style='color:#9ab0c4;font-size:12px'>IBtech</span>"
+    assunto = "[IBSALA] Recuperação de username"
+    content = (
+        "<p style='margin:0 0 16px'>Você solicitou a recuperação do seu username. Aqui está:</p>"
+        "<div style='text-align:center;border:2px solid #1a73e8;padding:20px;margin-bottom:20px;background:#f8f9ff'>"
+        f"<span style='font-size:24px;font-weight:bold;color:#1a73e8;letter-spacing:2px'>@{username}</span>"
         "</div>"
-        "<p style='font-size:13px;margin-bottom:16px'>Voce solicitou a recuperacao do seu username. Aqui esta:</p>"
-        "<div style='border:1px solid #253d54;background:#0d1117;padding:16px;margin-bottom:20px;text-align:center'>"
-        f"<span style='color:#1e90ff;font-size:20px;letter-spacing:2px'>@{username}</span>"
-        "</div>"
-        "<p style='color:#9ab0c4;font-size:12px;margin-bottom:4px'>Acesse o site com esse username:</p>"
-        "<a href='https://ibsala.com.br' style='color:#1e90ff;font-size:13px'>ibsala.com.br</a>"
-        "<div style='color:#7a9ab5;font-size:11px;margin-top:24px;border-top:1px solid #253d54;padding-top:12px'>"
-        "Se nao foi voce que solicitou, ignore este email.<br/>"
-        "&copy; Joshua Azze &amp; IBtech"
-        "</div></div>"
+        "<p style='margin:0 0 8px;font-size:13px;color:#444'>Acesse o site com esse username:</p>"
+        "<p style='margin:0'><a href='https://ibsala.com.br' style='color:#1a73e8;font-size:14px;font-weight:bold'>ibsala.com.br</a></p>"
+        "<p style='margin:20px 0 0;font-size:12px;color:#888'>Se não foi você que solicitou, ignore este email.</p>"
     )
+    corpo = _email_wrapper(content, "Recuperação de username")
     enviar_email(email, assunto, corpo)
-
 def _montar_email_aulas(username, dia, aulas):
     if not aulas:
         return None, None
 
-    linhas = ""
+    blocos = ""
     for a in aulas:
         if not a["salas"]:
-            sala_txt = "<tr><td colspan='3' style='color:#a0b4c4;font-size:12px'>sala nao encontrada</td></tr>"
+            sala_rows = (
+                "<tr><td colspan='3' style='padding:10px 8px;color:#888;font-size:12px'>"
+                "Sala não encontrada para hoje.</td></tr>"
+            )
         else:
-            sala_txt = ""
+            sala_rows = ""
             for s in a["salas"]:
                 sala = s.get("Salas") or s.get("Sala") or "-"
                 hora = s.get("Horario") or "-"
                 data = s.get("DATA") or s.get("Data") or ""
-                sala_txt += (
+                sala_rows += (
                     f"<tr>"
-                    f"<td style='color:#ffc107'>{sala}</td>"
-                    f"<td style='color:#00d4ff'>{hora}</td>"
-                    f"<td style='color:#c8d4e0'>{data}</td>"
+                    f"<td style='padding:8px;border-bottom:1px solid #e0e0e0;font-weight:bold;color:#1a1a1a'>{sala}</td>"
+                    f"<td style='padding:8px;border-bottom:1px solid #e0e0e0;color:#1a73e8'>{hora}</td>"
+                    f"<td style='padding:8px;border-bottom:1px solid #e0e0e0;color:#444'>{data}</td>"
                     f"</tr>"
                 )
 
-        linhas += f"""
-        <div style='margin-bottom:20px;border:1px solid #253d54;padding:14px;background:#0d1117'>
-          <div style='color:#00d4ff;font-size:14px;margin-bottom:4px'>{a['disciplina']}</div>
-          <div style='color:#7a9ab5;font-size:12px;margin-bottom:10px'>{a['turma']} &middot; {a['professor']}</div>
-          <table style='width:100%;border-collapse:collapse;font-size:12px'>
-            <thead><tr>
-              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #253d54'>Sala</th>
-              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #253d54'>Horario</th>
-              <th style='text-align:left;color:#1e90ff;padding:4px 8px;border-bottom:1px solid #253d54'>Data</th>
-            </tr></thead>
-            <tbody>{sala_txt}</tbody>
-          </table>
-        </div>"""
+        blocos += (
+            "<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
+            "margin-bottom:16px;background:#ffffff'>"
+            f"<div style='padding:12px 14px;background:#f8f9ff;border-bottom:1px solid #e0e0e0'>"
+            f"<div style='font-weight:bold;font-size:14px;color:#1a1a1a'>{a['disciplina']}</div>"
+            f"<div style='font-size:12px;color:#666;margin-top:3px'>{a['turma']} &middot; {a['professor']}</div>"
+            f"</div>"
+            "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse'>"
+            "<thead><tr>"
+            "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
+            "border-bottom:2px solid #e0e0e0;background:#fafafa'>SALA</th>"
+            "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
+            "border-bottom:2px solid #e0e0e0;background:#fafafa'>HORÁRIO</th>"
+            "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
+            "border-bottom:2px solid #e0e0e0;background:#fafafa'>DATA</th>"
+            "</tr></thead>"
+            f"<tbody>{sala_rows}</tbody>"
+            "</table></div>"
+        )
 
     assunto = f"[IBtech] Suas aulas de {dia} — {_hoje()}"
-    corpo   = f"""
-    <div style='background:#080c10;color:#dde6f0;font-family:Courier New,monospace;padding:24px;max-width:600px'>
-      <div style='border-bottom:1px solid #253d54;padding-bottom:12px;margin-bottom:20px'>
-        <span style='color:#1e90ff;font-size:16px;letter-spacing:2px'>IBSALA</span>
-        <span style='color:#7a9ab5'> // </span>
-        <span style='color:#9ab0c4;font-size:12px'>IBtech</span>
-        <div style='color:#7a9ab5;font-size:12px;margin-top:4px'>{dia} &middot; {_hoje()}</div>
-      </div>
-      <div style='color:#7a9ab5;font-size:12px;margin-bottom:16px'>// aulas de hoje para <span style='color:#1e90ff'>@{username}</span></div>
-      {linhas}
-      <div style='color:#7a9ab5;font-size:11px;margin-top:20px;border-top:1px solid #253d54;padding-top:12px'>
-        Este email foi gerado automaticamente pelo sistema de salas IBtech.
-      </div>
-    </div>"""
+    content = (
+        f"<p style='margin:0 0 4px;font-size:12px;color:#666'>"
+        f"<strong style='color:#1a73e8'>{dia}</strong> &middot; {_hoje()}</p>"
+        f"<p style='margin:0 0 20px;font-size:13px;color:#444'>"
+        f"Aulas de hoje para <strong>@{username}</strong>:</p>"
+        + blocos
+        + "<p style='margin:16px 0 0;font-size:11px;color:#888'>"
+        "Este email foi gerado automaticamente pelo sistema IBSALA.</p>"
+    )
+    corpo = _email_wrapper(content, f"Aulas de {dia}")
     return assunto, corpo
-
 
 def _horario_na_janela(horario_str, janela_fim, janela_inicio=None):
     if not horario_str or not janela_fim:
@@ -668,8 +669,9 @@ def atualizar_historico_disciplinas(df):
 def salvar_csv(df_organizado):
     os.makedirs(PASTA_CACHE, exist_ok=True)
     _excluir_csvs_anteriores()
-    df_organizado.to_csv(CSV_HOJE, index=False, encoding="utf-8-sig")
-    print(f"[cache] CSV salvo: {CSV_HOJE}")
+    path = _csv_hoje()
+    df_organizado.to_csv(path, index=False, encoding="utf-8-sig")
+    print(f"[cache] CSV salvo: {path}")
     atualizar_historico_disciplinas(df_organizado)
 
 

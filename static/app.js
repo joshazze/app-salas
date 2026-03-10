@@ -318,11 +318,14 @@ async function loadTodas(){
   if(!d.materias.length){el.innerHTML='<div class="msg warn">Nenhuma materia.</div>';return;}
   const g={};d.materias.forEach(m=>{(g[m.dia]=g[m.dia]||[]).push(m);});
   const DIA_ORDER=['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
-  el.innerHTML=Object.entries(g).sort(([a],[b])=>DIA_ORDER.indexOf(a)-DIA_ORDER.indexOf(b)).map(([dia,mats])=>
-    `<div class="cat-block"><div class="cat-label">${dia}</div>
-    <table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Turno</th></tr></thead><tbody>
-    ${mats.map(m=>`<tr><td class="c-turma">${m.turma}</td><td>${m.disciplina}</td><td class="c-dim">${m.professor}</td><td class="c-hora">${SLOT_LABELS[m.slot]||'—'}</td></tr>`).join('')}
-    </tbody></table></div>`).join('');
+  const SLOT_ORDER={manha1:0,manha2:1,tarde1:2,tarde2:3,noite1:4,noite2:5};
+  el.innerHTML=Object.entries(g).sort(([a],[b])=>DIA_ORDER.indexOf(a)-DIA_ORDER.indexOf(b)).map(([dia,mats])=>{
+    const sorted=mats.slice().sort((a,b)=>(SLOT_ORDER[a.slot]??9)-(SLOT_ORDER[b.slot]??9));
+    return `<div class="cat-block"><div class="cat-label">${dia}</div>
+    <table class="tbl"><thead><tr><th>Turma</th><th>Turno</th><th>Disciplina</th><th>Professor</th></tr></thead><tbody>
+    ${sorted.map(m=>`<tr><td class="c-turma">${m.turma}</td><td class="c-hora">${SLOT_LABELS[m.slot]||'—'}</td><td>${m.disciplina}</td><td class="c-dim">${m.professor}</td></tr>`).join('')}
+    </tbody></table></div>`;
+  }).join('');
 }
 async function loadGer(){
   const el=document.getElementById('s-ger-lista');

@@ -451,9 +451,12 @@ def adm_aluno_bloquear():
         return jsonify({"erro": "Nao autorizado"}), 401
     bloqueado = data.get("bloqueado", True)
     username, email = vp.set_bloqueio_aluno(data["id"], bloqueado)
-    if bloqueado and email:
+    if email:
         try:
-            vp.email_bloqueio(username, email)
+            if bloqueado:
+                vp.email_bloqueio(username, email)
+            else:
+                vp.email_desbloqueio(username, email)
         except Exception:
             pass
     return jsonify({"ok": True})

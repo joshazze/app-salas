@@ -627,6 +627,37 @@ def email_bloqueio(username, email):
     enviar_email(email, assunto, corpo)
 
 
+def email_desbloqueio(username, email):
+    """Envia email avisando que a conta foi desbloqueada."""
+    if not email:
+        return
+    content = f"""
+<p style="margin:0 0 16px;font-size:14px;color:#1a1a1a">
+  Ola, <strong>{username}</strong>.
+</p>
+
+<div style="background:#ffffff;border:1px solid #2e7d32;border-left:4px solid #2e7d32;padding:16px;margin-bottom:20px">
+  <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#2e7d32;letter-spacing:1px">CONTA DESBLOQUEADA</p>
+  <p style="margin:0;font-size:13px;color:#1b5e20;line-height:1.7">
+    Sua conta no <strong>IBSALA</strong> foi <strong style="color:#2e7d32">desbloqueada</strong>.
+    Voce ja pode acessar normalmente e voltara a receber as
+    <strong>notificacoes diarias</strong> de aulas conforme seus slots cadastrados.
+  </p>
+</div>
+
+<p style="margin:0 0 16px;font-size:13px;color:#444;line-height:1.7">
+  Qualquer duvida, responda este email.
+</p>
+
+<p style="margin:0;font-size:13px;color:#444;line-height:1.7">
+  &mdash; Equipe IBSALA
+</p>
+"""
+    assunto = "[IBSALA] Sua conta foi desbloqueada"
+    corpo = _email_wrapper(content, "Conta desbloqueada")
+    enviar_email(email, assunto, corpo)
+
+
 def email_recuperar_username(username, email):
     """Envia email com o username do aluno."""
     assunto = "[IBSALA] Recuperação de username"

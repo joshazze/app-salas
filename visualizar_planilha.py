@@ -493,8 +493,8 @@ def _email_wrapper(content: str, subtitle: str = "IBtech") -> str:
         "<!DOCTYPE html><html lang='pt-BR'><head>"
         "<meta charset='UTF-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "</head><body style='margin:0;padding:0;background:#f4f4f4'>"
-        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='background:#f4f4f4'><tr><td>"
+        "</head><body style='margin:0;padding:0;background:#ffffff'>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='background:#ffffff'><tr><td>"
         "<table align='center' width='600' cellpadding='0' cellspacing='0' border='0' "
         "style='background:#ffffff;max-width:600px;margin:24px auto;"
         "font-family:Arial,Helvetica,sans-serif;border:1px solid #e0e0e0'>"
@@ -503,7 +503,7 @@ def _email_wrapper(content: str, subtitle: str = "IBtech") -> str:
         f"<span style='color:#a8c7fa;font-size:13px;margin-left:10px'>// {subtitle}</span>"
         "</td></tr>"
         f"<tr><td style='padding:28px;color:#1a1a1a;font-size:14px;line-height:1.7'>{content}</td></tr>"
-        "<tr><td style='background:#f4f4f4;padding:16px 28px;border-top:1px solid #e0e0e0'>"
+        "<tr><td style='background:#ffffff;padding:16px 28px;border-top:1px solid #e0e0e0'>"
         "<p style='margin:0;font-size:11px;color:#757575;font-family:Arial,Helvetica,sans-serif'>"
         "&copy; Joshua Azze &amp; IBtech &mdash; "
         "<a href='mailto:salas.ibtech@gmail.com' style='color:#1a73e8;text-decoration:none'>"
@@ -540,7 +540,7 @@ def email_boas_vindas(username, email, materias):
                     slot_label = " &middot; <span style='color:#e53935'>sem slot &mdash; configure em Configuracoes</span>"
                 linhas_materias += (
                     f"<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
-                    f"padding:10px 14px;margin-bottom:6px;background:#f8f9ff'>"
+                    f"padding:10px 14px;margin-bottom:6px;background:#ffffff'>"
                     f"<div style='font-weight:bold;color:#1a1a1a;font-size:13px'>{m['disciplina']}</div>"
                     f"<div style='color:#666;font-size:11px;margin-top:3px'>{m['turma']} &middot; {m['professor']}{slot_label}</div>"
                     f"</div>"
@@ -551,14 +551,14 @@ def email_boas_vindas(username, email, materias):
         )
     else:
         materias_bloco = (
-            "<div style='border:1px solid #f5c518;background:#fffbea;padding:14px;color:#856404;font-size:13px'>"
+            "<div style='border:1px solid #f5c518;background:#ffffff;padding:14px;color:#856404;font-size:13px'>"
             "&#9888; Você ainda não adicionou nenhuma matéria.<br/>"
             "<span style='font-size:12px'>Acesse o site e adicione suas disciplinas para receber notificações de sala.</span>"
             "</div>"
         )
 
     acesso_bloco = (
-        "<div style='background:#f8f9ff;border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
+        "<div style='background:#ffffff;border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
         "padding:14px;margin-bottom:20px'>"
         "<p style='margin:0 0 6px;font-size:12px;color:#666;font-weight:bold'>SEU ACESSO</p>"
         f"<p style='margin:0 0 4px;font-size:14px'>Username: <strong style='color:#1a73e8'>@{username}</strong></p>"
@@ -567,7 +567,7 @@ def email_boas_vindas(username, email, materias):
     )
 
     como_usar = (
-        "<div style='background:#f8f9ff;border:1px solid #e0e0e0;padding:14px;margin-bottom:20px'>"
+        "<div style='background:#ffffff;border:1px solid #e0e0e0;padding:14px;margin-bottom:20px'>"
         "<p style='margin:0 0 10px;font-size:12px;color:#666;font-weight:bold'>COMO USAR O IBSALA</p>"
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>1.</span> "
         "Acesse <a href='https://ibsala.com.br' style='color:#1a73e8'>ibsala.com.br</a>"
@@ -579,7 +579,7 @@ def email_boas_vindas(username, email, materias):
         "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>4.</span> "
         "Em <em>Configuracoes</em>, adicione suas disciplinas e selecione o "
         "<strong>slot de horario</strong> de cada uma para ativar as notificacoes por email</div>"
-        "<div style='margin-top:10px;padding:10px 12px;background:#fff3cd;border:1px solid #ffc107;"
+        "<div style='margin-top:10px;padding:10px 12px;background:#ffffff;border:1px solid #ffc107;"
         "font-size:12px;color:#856404'>"
         "&#9432; Voce so recebera emails de aviso se cada disciplina tiver um slot definido. "
         "Acesse Configuracoes e atribua o turno correto a cada materia.</div>"
@@ -605,7 +605,7 @@ def email_bloqueio(username, email):
   Ola, <strong>{username}</strong>.
 </p>
 
-<div style="background:#fff0f0;border:1px solid #e53935;border-left:4px solid #e53935;padding:16px;margin-bottom:20px">
+<div style="background:#ffffff;border:1px solid #e53935;border-left:4px solid #e53935;padding:16px;margin-bottom:20px">
   <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#e53935;letter-spacing:1px">CONTA BLOQUEADA</p>
   <p style="margin:0;font-size:13px;color:#b71c1c;line-height:1.7">
     Sua conta no <strong>IBSALA</strong> foi <strong style="color:#e53935">bloqueada</strong> por um administrador.
@@ -632,7 +632,7 @@ def email_recuperar_username(username, email):
     assunto = "[IBSALA] Recuperação de username"
     content = (
         "<p style='margin:0 0 16px'>Você solicitou a recuperação do seu username. Aqui está:</p>"
-        "<div style='text-align:center;border:2px solid #1a73e8;padding:20px;margin-bottom:20px;background:#f8f9ff'>"
+        "<div style='text-align:center;border:2px solid #1a73e8;padding:20px;margin-bottom:20px;background:#ffffff'>"
         f"<span style='font-size:24px;font-weight:bold;color:#1a73e8;letter-spacing:2px'>@{username}</span>"
         "</div>"
         "<p style='margin:0 0 8px;font-size:13px;color:#444'>Acesse o site com esse username:</p>"
@@ -669,18 +669,18 @@ def _montar_email_aulas(username, dia, aulas):
         blocos += (
             "<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
             "margin-bottom:16px;background:#ffffff'>"
-            f"<div style='padding:12px 14px;background:#f8f9ff;border-bottom:1px solid #e0e0e0'>"
+            f"<div style='padding:12px 14px;background:#ffffff;border-bottom:1px solid #e0e0e0'>"
             f"<div style='font-weight:bold;font-size:14px;color:#1a1a1a'>{a['disciplina']}</div>"
             f"<div style='font-size:12px;color:#666;margin-top:3px'>{a['turma']} &middot; {a['professor']}</div>"
             f"</div>"
             "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse'>"
             "<thead><tr>"
             "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
-            "border-bottom:2px solid #e0e0e0;background:#fafafa'>SALA</th>"
+            "border-bottom:2px solid #e0e0e0;background:#ffffff'>SALA</th>"
             "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
-            "border-bottom:2px solid #e0e0e0;background:#fafafa'>HORÁRIO</th>"
+            "border-bottom:2px solid #e0e0e0;background:#ffffff'>HORÁRIO</th>"
             "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
-            "border-bottom:2px solid #e0e0e0;background:#fafafa'>DATA</th>"
+            "border-bottom:2px solid #e0e0e0;background:#ffffff'>DATA</th>"
             "</tr></thead>"
             f"<tbody>{sala_rows}</tbody>"
             "</table></div>"

@@ -145,24 +145,6 @@ def salas_livres_slots():
         }
     return jsonify(resultado)
 
-
-@app.route("/api/salas-livres-slots")
-def salas_livres_slots():
-    df_hoje = get_df_hoje()
-    filtro = request.args.get("sala", "").strip().lower()
-    por_slot = vp.listar_salas_livres_por_slot(df_hoje)
-    resultado = {}
-    for slot, salas in por_slot.items():
-        if filtro:
-            salas = [s for s in salas if filtro in s.lower()]
-        resultado[slot] = {
-            "label":  vp.SLOTS[slot]["label"],
-            "total":  len(salas),
-            "salas":  salas,
-        }
-    return jsonify(resultado)
-
-
 @app.route("/api/salas-livres")
 def salas_livres():
     df_hoje = get_df_hoje()
@@ -662,24 +644,24 @@ def adm_email_teste():
         for r in sorted(materias, key=lambda r: DIA_ORDER.index(r[1]) if r[1] in DIA_ORDER else 99)
     ) or "<tr><td colspan='3' style='padding:10px 12px;color:#888'>Nenhuma matéria.</td></tr>"
     content = (
-        "<div style='background:#fff3cd;border:1px solid #ffc107;padding:12px 14px;"
+        "<div style='background:#ffffff;border:1px solid #ffc107;padding:12px 14px;"
         "margin-bottom:20px;color:#856404;font-size:13px'>"
         "&#9432; Este é um email de teste enviado pelo administrador.</div>"
         "<p style='font-weight:bold;margin:0 0 8px'>Horários de envio</p>"
         "<table width='100%' cellpadding='0' cellspacing='0' border='0' "
         "style='border-collapse:collapse;border:1px solid #e0e0e0;margin-bottom:20px'>"
         "<thead><tr>"
-        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Início</th>"
-        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Janela até</th>"
-        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Ação</th>"
+        "<th style='padding:8px 12px;background:#ffffff;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Início</th>"
+        "<th style='padding:8px 12px;background:#ffffff;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Janela até</th>"
+        "<th style='padding:8px 12px;background:#ffffff;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Ação</th>"
         f"</tr></thead><tbody>{horarios_rows}</tbody></table>"
         "<p style='font-weight:bold;margin:0 0 8px'>Matérias cadastradas</p>"
         "<table width='100%' cellpadding='0' cellspacing='0' border='0' "
         "style='border-collapse:collapse;border:1px solid #e0e0e0;margin-bottom:20px'>"
         "<thead><tr>"
-        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Dia</th>"
-        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Disciplina</th>"
-        "<th style='padding:8px 12px;background:#f4f4f4;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Turma</th>"
+        "<th style='padding:8px 12px;background:#ffffff;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Dia</th>"
+        "<th style='padding:8px 12px;background:#ffffff;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Disciplina</th>"
+        "<th style='padding:8px 12px;background:#ffffff;text-align:left;font-size:12px;border-bottom:2px solid #e0e0e0'>Turma</th>"
         f"</tr></thead><tbody>{mat_rows}</tbody></table>"
     )
     corpo = vp._email_wrapper(content, 'Email de teste')

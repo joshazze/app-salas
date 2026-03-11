@@ -466,10 +466,11 @@
 
       <p style="color:var(--text);font-size:14px;line-height:1.8;margin-bottom:20px">
         O <span style="color:var(--blue);font-weight:bold">IBSALA</span> e uma plataforma do
-        <span style="color:var(--cyan)">IBtech</span> para consulta de salas e horarios de aula em tempo real.
-        Os dados sao capturados diariamente da planilha oficial da instituicao e ficam disponiveis
-        para qualquer aluno, sem precisar de login. Alunos cadastrados recebem um email
-        <strong style="color:var(--text)">30 minutos antes de cada aula</strong>, com a sala exata daquela disciplina.
+        <span style="color:var(--cyan)">IBtech</span> para consulta em tempo real de salas, horarios e professores
+        do <strong style="color:var(--text)">IBMEC BH</strong>. Os dados sao capturados diariamente da planilha
+        oficial da instituicao. Qualquer aluno pode consultar sem login. Alunos cadastrados acessam um painel
+        pessoal com as aulas do dia e recebem um email automatico
+        <strong style="color:var(--text)">30 minutos antes de cada aula</strong>, com sala, horario e professor daquela disciplina.
       </p>
 
       <div style="border-left:2px solid var(--blue);padding-left:14px;margin-bottom:24px">
@@ -480,8 +481,12 @@
             <p style="color:var(--text-dim);font-size:12px;margin-top:4px;line-height:1.6">Navegue pelas categorias ou use a busca livre para encontrar qualquer disciplina, sala, professor ou turma. Sem login, sem cadastro.</p>
           </div>
           <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
+            <span style="color:var(--blue);font-weight:bold;font-size:13px">Aulas de hoje</span>
+            <p style="color:var(--text-dim);font-size:12px;margin-top:4px;line-height:1.6">Apos o login, voce vai direto para o painel <strong style="color:var(--text)">Aulas de hoje</strong>: lista das suas disciplinas no dia atual com sala, horario e professor. A partir dali voce acessa <span style="color:var(--text)">Todas as materias</span> e <span style="color:var(--text)">Configuracoes</span>.</p>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
             <span style="color:var(--blue);font-weight:bold;font-size:13px">Cadastro de aluno</span>
-            <p style="color:var(--text-dim);font-size:12px;margin-top:4px;line-height:1.6">Crie um cadastro com seu username e adicione suas materias. A plataforma identifica automaticamente quais aulas sao suas e exibe sala, horario e professor do dia.</p>
+            <p style="color:var(--text-dim);font-size:12px;margin-top:4px;line-height:1.6">Crie um cadastro com seu username e email. Adicione suas materias em <span style="color:var(--text)">Configuracoes</span>, escolhendo o dia e o turno de cada disciplina. A plataforma cruza suas materias com a planilha do dia e monta o painel automaticamente.</p>
           </div>
           <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
             <span style="color:var(--blue);font-weight:bold;font-size:13px">Salas livres em tempo real</span>
@@ -550,6 +555,13 @@
           <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
               <span style="color:var(--yellow);font-size:11px">&#9632;</span>
+              <span style="color:var(--yellow);font-weight:bold;font-size:13px">Codigo de disciplina</span>
+            </div>
+            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">A planilha da instituicao inclui codigos internos junto ao nome das disciplinas (ex: <span style="color:var(--text)">IBM0022-8001/ JURISDICAO E PROCESSO</span>). O IBSALA separa automaticamente o codigo do nome e exibe apenas o nome limpo para o aluno em todas as telas, emails e resultados de busca. O codigo fica visivel somente no painel administrativo.</p>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <span style="color:var(--yellow);font-size:11px">&#9632;</span>
               <span style="color:var(--yellow);font-weight:bold;font-size:13px">Controle de acesso</span>
             </div>
             <p style="color:var(--text-dim);font-size:12px;line-height:1.6">O administrador pode trancar a plataforma inteira com um clique, desabilitando o acesso publico durante manutencoes. O painel admin fica sempre acessivel.</p>
@@ -559,7 +571,7 @@
               <span style="color:var(--yellow);font-size:11px">&#9632;</span>
               <span style="color:var(--yellow);font-weight:bold;font-size:13px">Infraestrutura</span>
             </div>
-            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">A aplicacao roda em Python (Flask) em uma VM no Google Cloud. O nginx gerencia HTTPS via Let's Encrypt e aplica rate limiting nas rotas de autenticacao.</p>
+            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">A aplicacao roda em Python (Flask) com Gunicorn em uma VM no Google Cloud (e2-standard-2, 2 vCPUs, 8 GB). O nginx gerencia HTTPS via Let's Encrypt e aplica rate limiting. Os dados da planilha passam por limpeza automatica de caracteres corrompidos (C1 Unicode) e normalizacao NFC antes de serem armazenados.</p>
           </div>
         </div>
       </div>

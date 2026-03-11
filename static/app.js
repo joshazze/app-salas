@@ -67,7 +67,15 @@ function mkPickList(rows,onSelect){
   });
   return ul;
 }
+async function applyAutoDark(){
+  const h=new Date().getHours(),m=new Date().getMinutes();
+  const mins=h*60+m;
+  const dark=(mins>=20*60)||(mins<6*60+45);
+  document.body.classList.toggle('dark',dark);
+}
+
 async function init(){
+  applyAutoDark();
   const d=await api('/api/status');G.statusData=d;
   if(d.travado){document.body.classList.add('travado');}else{document.body.classList.remove('travado');}
   const _aviso=document.getElementById('main-trava-aviso');
@@ -465,7 +473,7 @@ async function cadSalvar(){
   G.alunoId=d.aluno_id;G.username=d.username;
   document.getElementById('s-aluno-title').textContent=`ola, ${d.username}`;
   document.getElementById('badge-hoje').textContent=G.statusData?.dia||'';
-  cancelCadastro();goto('s-aluno');init();
+  cancelCadastro();goto('s-hoje');init();
 }
 
 async function doRecuperar(){
@@ -537,9 +545,10 @@ async function loadAdmDisc(){
   el.innerHTML='<div class="loading">carregando...</div>';
   const d=await api('/api/adm/disciplinas',admCreds());
   if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhuma disciplina.</div>';return;}
-  let h='<table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead><tbody>';
+  let h='<table class="tbl"><thead><tr><th>Código</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead><tbody>';
   d.registros.forEach(r=>{
     h+=`<tr>
+      <td><span class="c-dim" style="font-size:11px">${r.codigo||''}</span></td>
       <td><input class="tbl-inp" value="${r.turma}" id="dt-${r.id}-turma"/></td>
       <td><input class="tbl-inp" value="${r.disciplina}" id="dt-${r.id}-disc"/></td>
       <td><input class="tbl-inp" value="${r.professor}" id="dt-${r.id}-prof"/></td>
@@ -556,7 +565,8 @@ async function discAdicionar(){
   const prof=document.getElementById('disc-prof').value.trim();
   const msg=document.getElementById('disc-add-msg');
   if(!turma||!disc){msg.innerHTML='<div class="msg error">Turma e disciplina obrigatorios.</div>';return;}
-  await api('/api/adm/disciplinas/adicionar',{...admCreds(),turma,disciplina:disc,professor:prof});
+  const newcod=document.getElementById('adm-disc-add-cod')?.value.trim()||'';
+  await api('/api/adm/disciplinas/adicionar',{...admCreds(),turma,disciplina:disc,professor:prof,codigo:newcod});
   document.getElementById('disc-turma').value='';
   document.getElementById('disc-nome').value='';
   document.getElementById('disc-prof').value='';
@@ -567,7 +577,7 @@ async function discEditar(id){
   const turma=document.getElementById(`dt-${id}-turma`).value;
   const disc=document.getElementById(`dt-${id}-disc`).value;
   const prof=document.getElementById(`dt-${id}-prof`).value;
-  await api('/api/adm/disciplinas/editar',{...admCreds(),id,turma,disciplina:disc,professor:prof});
+  await api('/api/adm/disciplinas/editar',{...admCreds(),id,turma,disciplina:disc,professor:prof,codigo:''});
   loadAdmDisc();
 }
 async function discExcluir(id){
@@ -649,9 +659,11 @@ async function alunoToggleBloqueio(id, bloqueado){
 async function alunoEmailHoje(btn){
   const aluno_id=btn.dataset.aid,email=btn.dataset.email,username=btn.dataset.uname;
   if(!email){alert('Este aluno nao tem email cadastrado.');return;}
-  const d=await api('/api/adm/email/aluno',{...admCreds(),aluno_id});
-  if(d.ok) alert('Email enviado para '+email);
-  else alert('Erro: '+(d.erro||'falha ao enviar'));
+  try{
+    const d=await api('/api/adm/email/aluno',{...admCreds(),aluno_id});
+    if(d.ok) alert('Email enviado para '+email);
+    else alert('Erro: '+(d.erro||'falha ao enviar'));
+  }catch(e){alert('Falha de conexao ao enviar email: '+e.message);}
 }
 async function alunoExcluir(id){
   if(!confirm('Excluir aluno e todas as suas materias?'))return;
@@ -730,8 +742,10 @@ function atualizarContador(){
 }
 function removerChip(email){
   admAlunosSel.delete(email);
-  const cb=document.querySelector(`#adm-alunos-pick input[data-email="${email}"]`);
-  if(cb){cb.checked=false;cb.closest('label').style.background='transparent';}
+  const todos=document.querySelectorAll('#adm-alunos-pick input[type="checkbox"]');
+  for(const cb of todos){
+    if(cb.dataset.email===email){cb.checked=false;cb.closest('label').style.background='transparent';break;}
+  }
   atualizarContador();
 }
 async function emailTodos(){

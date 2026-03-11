@@ -60,10 +60,6 @@ def rotina_atualizacao(slot=None):
         dia_semana = datetime.now().strftime("%A").upper()
         dia_pt     = vp.DIAS_PT.get(dia_semana, dia_semana)
         csv_hoje   = os.path.join(vp.PASTA_CACHE, f"mapa_salas_{hoje}.csv")
-        vp.HOJE     = hoje
-        vp.DIA_PT   = dia_pt
-        vp.CSV_HOJE = csv_hoje
-
         df_bruto = vp.buscar_planilha_remota()
         df = vp.parsear_e_organizar(df_bruto)
         vp.salvar_csv_incremental(df)
@@ -95,9 +91,6 @@ def rotina_captura():
     try:
         hoje   = agora.strftime("%Y-%m-%d")
         dia_pt = vp.DIAS_PT.get(dia_semana, dia_semana)
-        vp.HOJE     = hoje
-        vp.DIA_PT   = dia_pt
-        vp.CSV_HOJE = os.path.join(vp.PASTA_CACHE, f"mapa_salas_{hoje}.csv")
         df_bruto = vp.buscar_planilha_remota()
         df       = vp.parsear_e_organizar(df_bruto)
         vp.salvar_csv_incremental(df)
@@ -124,7 +117,11 @@ def rotina_monitoramento(slot):
             except (json.JSONDecodeError, OSError) as e:
                 problemas.append(f"Arquivo de status corrompido: {e}")
                 status = {}
-            ts = datetime.fromisoformat(status["timestamp"])
+            ts_str = status.get("timestamp")
+            if not ts_str:
+                problemas.append("Arquivo de status sem campo timestamp -- scheduler pode nao ter rodado")
+                ts_str = datetime.utcnow().isoformat()
+            ts = datetime.fromisoformat(ts_str)
             minutos = max(0, (datetime.utcnow() - ts).total_seconds() / 60)
 
             if status.get("erro_msg"):
@@ -136,7 +133,7 @@ def rotina_monitoramento(slot):
                 alunos_com_email = listar_alunos_com_email()
                 alunos_com_aula = [
                     a for a in alunos_com_email
-                    if any(r[5] == slot for r in vp.listar_materias_aluno(a[0], dia=dia_pt))
+                    if any((r[5] if len(r) > 5 else None) == slot for r in vp.listar_materias_aluno(a[0], dia=dia_pt))
                 ]
                 if alunos_com_aula:
                     problemas.append(f"0 emails enviados no slot {label}, mas ha {len(alunos_com_aula)} aluno(s) com aulas neste slot hoje")
@@ -163,14 +160,14 @@ def rotina_monitoramento(slot):
                 pass
 
         if not problemas:
-            print(f"[monitor] Tudo OK na janela {janela_inicio}-{janela_fim}.")
+            print(f"[monitor] Tudo OK no slot {label}.")
             return
 
         # 4. Envia email de alerta para o admin
         admin_email = os.environ.get("ADMIN_EMAIL", "jazzedistel@gmail.com")
         lista_html = "".join(
-            f"<div style='padding:10px 14px;margin-bottom:8px;border-left:4px solid #e53935;"
-            f"background:#fff5f5;font-size:13px'>{p}</div>"
+            f"<div style='padding:10px 14px;margin-bottom:8px;border-left:4px solid #dc3545;"
+            f"background:#fdf2f2;font-size:13px'>{p}</div>"
             for p in problemas
         )
         content = (

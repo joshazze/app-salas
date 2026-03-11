@@ -7,6 +7,7 @@ import os
 import io
 import time
 import sqlite3
+import re
 import unicodedata
 import urllib.request
 from contextlib import contextmanager
@@ -113,6 +114,7 @@ def init_db():
             "ALTER TABLE alunos ADD COLUMN bloqueado INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE alunos ADD COLUMN receber_email INTEGER NOT NULL DEFAULT 1",
             "ALTER TABLE materias ADD COLUMN slot TEXT",
+            "ALTER TABLE disciplinas_historico ADD COLUMN codigo TEXT DEFAULT ''",
         ]:
             try:
                 con.execute(migration)
@@ -230,23 +232,23 @@ def excluir_aluno(aluno_id):
 def listar_disciplinas_historico():
     with get_db() as con:
         return con.execute(
-            "SELECT id, turma, disciplina, professor FROM disciplinas_historico ORDER BY turma, disciplina"
+            "SELECT id, turma, disciplina, professor, COALESCE(codigo,'') FROM disciplinas_historico ORDER BY turma, disciplina"
         ).fetchall()
 
 
-def adicionar_disciplina_historico(turma, disciplina, professor):
+def adicionar_disciplina_historico(turma, disciplina, professor, codigo=""):
     with get_db() as con:
         con.execute(
-            "INSERT OR IGNORE INTO disciplinas_historico (turma, disciplina, professor) VALUES (?, ?, ?)",
-            (turma, disciplina, professor)
+            "INSERT OR IGNORE INTO disciplinas_historico (turma, disciplina, professor, codigo) VALUES (?, ?, ?, ?)",
+            (turma, disciplina, professor, codigo)
         )
 
 
-def editar_disciplina_historico(disc_id, turma, disciplina, professor):
+def editar_disciplina_historico(disc_id, turma, disciplina, professor, codigo=""):
     with get_db() as con:
         con.execute(
-            "UPDATE disciplinas_historico SET turma=?, disciplina=?, professor=? WHERE id=?",
-            (turma, disciplina, professor, disc_id)
+            "UPDATE disciplinas_historico SET turma=?, disciplina=?, professor=?, codigo=? WHERE id=?",
+            (turma, disciplina, professor, codigo, disc_id)
         )
 
 
@@ -299,8 +301,8 @@ def listar_salas_livres(df_hoje, horario_atual=None):
                 fim = fim_h * 60 + fim_m
                 if ini <= horario_atual <= fim:
                     ocupadas.add(sala)
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[warn] Erro ao parsear horario '{row.get('Horario')}': {e}")
     elif col:
         ocupadas = set(df_hoje[col].dropna().astype(str).str.strip().unique())
 
@@ -339,35 +341,6 @@ def listar_salas_livres_por_slot(df_hoje):
     }
 
 
-def listar_salas_livres_por_slot(df_hoje):
-    """Retorna dict slot -> [salas livres] para cada um dos 6 slots do dia.
-    Uma sala e considerada ocupada num slot se alguma aula da planilha
-    tiver Horario cujo inicio pertence a esse slot.
-    """
-    col = next((c for c in ["Salas", "Sala"] if c in df_hoje.columns), None)
-
-    # Mapear sala -> conjunto de slots em que ela esta ocupada
-    ocupadas_por_slot = {k: set() for k in SLOTS}
-    if col and "Horario" in df_hoje.columns:
-        for _, row in df_hoje[[col, "Horario"]].dropna().iterrows():
-            sala = str(row[col]).strip()
-            if not sala:
-                continue
-            slot = horario_para_slot(str(row["Horario"]).strip())
-            if slot:
-                ocupadas_por_slot[slot].add(sala)
-
-    with get_db() as con:
-        todas = [r[0] for r in con.execute(
-            "SELECT sala FROM salas_historico ORDER BY sala"
-        ).fetchall()]
-    todas = [s for s in todas if s]
-
-    return {
-        slot: [s for s in todas if s not in ocupadas_por_slot[slot]]
-        for slot in SLOTS
-    }
-
 
 def contar_salas():
     with get_db() as con:
@@ -376,6 +349,7 @@ def contar_salas():
 
 
 def salvar_materia(aluno_id, dia, turma, disciplina, professor, slot=None):
+    _, disciplina = _extrair_codigo_disciplina(disciplina)  # garante que o codigo nao entre no nome
     with get_db() as con:
         existe = con.execute("""
             SELECT id FROM materias
@@ -488,26 +462,35 @@ def enviar_email(para, assunto, corpo_html):
 
 
 def _email_wrapper(content: str, subtitle: str = "IBtech") -> str:
-    """Gera HTML completo do email com fundo branco e letras pretas."""
+    """Gera HTML completo do email alinhado ao estilo visual do site IBSALA."""
+    font = "Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
     return (
         "<!DOCTYPE html><html lang='pt-BR'><head>"
         "<meta charset='UTF-8'>"
         "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "</head><body style='margin:0;padding:0;background:#ffffff'>"
-        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='background:#ffffff'><tr><td>"
+        f"<style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');</style>"
+        "</head>"
+        f"<body style='margin:0;padding:0;background:#f0f2f5;font-family:{font}'>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='background:#f0f2f5'>"
+        "<tr><td style='padding:24px 16px'>"
         "<table align='center' width='600' cellpadding='0' cellspacing='0' border='0' "
-        "style='background:#ffffff;max-width:600px;margin:24px auto;"
-        "font-family:Courier New,Consolas,monospace;font-weight:450;border:1px solid #e0e0e0'>"
-        "<tr><td style='background:#1a73e8;padding:20px 28px'>"
-        "<span style='color:#ffffff;font-size:20px;font-weight:bold;letter-spacing:3px'>IBSALA</span>"
-        f"<span style='color:#a8c7fa;font-size:13px;margin-left:10px'>// {subtitle}</span>"
-        "</td></tr>"
-        f"<tr><td style='padding:28px;color:#1a1a1a;font-size:14px;line-height:1.7;font-family:Courier New,Consolas,monospace;font-weight:450'>{content}</td></tr>"
-        "<tr><td style='background:#ffffff;padding:16px 28px;border-top:1px solid #e0e0e0'>"
-        "<p style='margin:0;font-size:11px;color:#757575;font-family:Courier New,Consolas,monospace'>"
-        "&copy; Joshua Azze &amp; IBtech &mdash; "
-        "<a href='mailto:salas.ibtech@gmail.com' style='color:#1a73e8;text-decoration:none'>"
-        "salas.ibtech@gmail.com</a></p></td></tr>"
+        "style='background:#ffffff;max-width:600px;margin:0 auto;border:1px solid #dee2e6;border-radius:6px;overflow:hidden'>"
+        "<tr><td style='background:#002555;padding:18px 28px'>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0'><tr>"
+        "<td><span style='color:#ffffff;font-size:18px;font-weight:800;letter-spacing:1px'>IBSALA</span>"
+        "<span style='color:rgba(255,255,255,.3);font-size:13px;margin-left:8px'>//</span>"
+        f"<span style='color:rgba(255,255,255,.6);font-size:13px;margin-left:6px;font-weight:500'>{subtitle}</span></td>"
+        "<td align='right'><span style='background:#F5AC00;color:#ffffff;font-size:10px;"
+        "font-weight:700;padding:3px 10px;letter-spacing:1px;border-radius:2px'>IBTECH</span></td>"
+        "</tr></table></td></tr>"
+        f"<tr><td style='padding:28px;color:#121212;font-size:14px;line-height:1.7;font-family:{font}'>{content}</td></tr>"
+        "<tr><td style='background:#f8f9fa;padding:14px 28px;border-top:1px solid #dee2e6'>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0'><tr>"
+        f"<td><p style='margin:0;font-size:11px;color:#888888;font-family:{font}'>"
+        "ibsala.com.br &mdash; consulta de salas e horarios IBtech</p></td>"
+        "<td align='right'><a href='https://ibsala.com.br' "
+        "style='color:#002555;font-size:11px;font-weight:600;text-decoration:none'>acessar site &rarr;</a></td>"
+        "</tr></table></td></tr>"
         "</table></td></tr></table></body></html>"
     )
 
@@ -527,7 +510,7 @@ def email_boas_vindas(username, email, materias):
             mats = dias[dia]
             linhas_materias += (
                 f"<p style='margin:16px 0 6px;font-size:12px;font-weight:bold;"
-                f"color:#1a73e8;text-transform:uppercase;letter-spacing:1px'>{dia}</p>"
+                f"color:#002555;text-transform:uppercase;letter-spacing:1px'>{dia}</p>"
             )
             for m in mats:
                 slot_label = ''
@@ -535,13 +518,13 @@ def email_boas_vindas(username, email, materias):
                     slot_labels = {"manha1":"1º Manhã (07:30)","manha2":"2º Manhã (09:50)",
                                    "tarde1":"1º Tarde (13:00)","tarde2":"2º Tarde (14:00)",
                                    "noite1":"1º Noite (18:00)","noite2":"2º Noite (19:00)"}
-                    slot_label = f" &middot; <span style='color:#1a73e8'>{slot_labels.get(m['slot'], m['slot'])}</span>"
+                    slot_label = f" &middot; <span style='color:#002555'>{slot_labels.get(m['slot'], m['slot'])}</span>"
                 else:
-                    slot_label = " &middot; <span style='color:#e53935'>sem turno &mdash; configure em Configuracoes</span>"
+                    slot_label = " &middot; <span style='color:#dc3545'>sem turno &mdash; configure em Configuracoes</span>"
                 linhas_materias += (
-                    f"<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
+                    f"<div style='border:1px solid #dee2e6;border-left:3px solid #002555;"
                     f"padding:10px 14px;margin-bottom:6px;background:#ffffff'>"
-                    f"<div style='font-weight:bold;color:#1a1a1a;font-size:13px'>{m['disciplina']}</div>"
+                    f"<div style='font-weight:bold;color:#121212;font-size:13px'>{m['disciplina']}</div>"
                     f"<div style='color:#666;font-size:11px;margin-top:3px'>{m['turma']} &middot; {m['professor']}{slot_label}</div>"
                     f"</div>"
                 )
@@ -558,27 +541,27 @@ def email_boas_vindas(username, email, materias):
         )
 
     acesso_bloco = (
-        "<div style='background:#ffffff;border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
+        "<div style='background:#ffffff;border:1px solid #dee2e6;border-left:3px solid #002555;"
         "padding:14px;margin-bottom:20px'>"
         "<p style='margin:0 0 6px;font-size:12px;color:#666;font-weight:bold'>SEU ACESSO</p>"
-        f"<p style='margin:0 0 4px;font-size:14px'>Username: <strong style='color:#1a73e8'>@{username}</strong></p>"
+        f"<p style='margin:0 0 4px;font-size:14px'>Username: <strong style='color:#002555'>@{username}</strong></p>"
         "<p style='margin:0;font-size:12px;color:#666'>Use esse username para entrar no site. Não é necessária senha.</p>"
         "</div>"
     )
 
     como_usar = (
-        "<div style='background:#ffffff;border:1px solid #e0e0e0;padding:14px;margin-bottom:20px'>"
+        "<div style='background:#ffffff;border:1px solid #dee2e6;padding:14px;margin-bottom:20px'>"
         "<p style='margin:0 0 10px;font-size:12px;color:#666;font-weight:bold'>COMO USAR O IBSALA</p>"
-        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>1.</span> "
-        "Acesse <a href='https://ibsala.com.br' style='color:#1a73e8'>ibsala.com.br</a>"
+        "<div style='margin-bottom:8px'><span style='color:#002555;font-weight:bold'>1.</span> "
+        "Acesse <a href='https://ibsala.com.br' style='color:#002555'>ibsala.com.br</a>"
         " e clique em <em>Estou cadastrado</em></div>"
-        f"<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>2.</span> "
+        f"<div style='margin-bottom:8px'><span style='color:#002555;font-weight:bold'>2.</span> "
         f"Digite seu username <strong>@{username}</strong> para entrar</div>"
-        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3.</span> "
+        "<div style='margin-bottom:8px'><span style='color:#002555;font-weight:bold'>3.</span> "
         "Veja suas aulas do dia com sala, horario e professor em tempo real</div>"
-        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>3b.</span> "
+        "<div style='margin-bottom:8px'><span style='color:#002555;font-weight:bold'>3b.</span> "
         "Na busca livre, ative <strong>salas livres por turno</strong> para ver quais salas estao desocupadas em cada turno do dia &mdash; sem precisar de cadastro</div>"
-        "<div style='margin-bottom:8px'><span style='color:#1a73e8;font-weight:bold'>4.</span> "
+        "<div style='margin-bottom:8px'><span style='color:#002555;font-weight:bold'>4.</span> "
         "Em <em>Configuracoes</em>, adicione suas disciplinas e selecione o "
         "<strong>turno de horario</strong> de cada uma para ativar as notificacoes por email</div>"
         "<div style='margin-top:10px;padding:10px 12px;background:#ffffff;border:1px solid #ffc107;"
@@ -603,14 +586,14 @@ def email_bloqueio(username, email):
     if not email:
         return
     content = f"""
-<p style="margin:0 0 16px;font-size:14px;color:#1a1a1a">
+<p style="margin:0 0 16px;font-size:14px;color:#121212">
   Ola, <strong>{username}</strong>.
 </p>
 
-<div style="background:#ffffff;border:1px solid #e53935;border-left:4px solid #e53935;padding:16px;margin-bottom:20px">
-  <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#e53935;letter-spacing:1px">CONTA BLOQUEADA</p>
-  <p style="margin:0;font-size:13px;color:#b71c1c;line-height:1.7">
-    Sua conta no <strong>IBSALA</strong> foi <strong style="color:#e53935">bloqueada</strong> por um administrador.
+<div style="background:#ffffff;border:1px solid #dc3545;border-left:4px solid #dc3545;padding:16px;margin-bottom:20px">
+  <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#dc3545;letter-spacing:1px">CONTA BLOQUEADA</p>
+  <p style="margin:0;font-size:13px;color:#9b1c1c;line-height:1.7">
+    Sua conta no <strong>IBSALA</strong> foi <strong style="color:#dc3545">bloqueada</strong> por um administrador.
     Enquanto estiver bloqueada, voce <strong>nao recebera notificacoes diarias</strong> de aulas
     e o acesso a sua conta estara restrito.
   </p>
@@ -634,14 +617,14 @@ def email_desbloqueio(username, email):
     if not email:
         return
     content = f"""
-<p style="margin:0 0 16px;font-size:14px;color:#1a1a1a">
+<p style="margin:0 0 16px;font-size:14px;color:#121212">
   Ola, <strong>{username}</strong>.
 </p>
 
-<div style="background:#ffffff;border:1px solid #2e7d32;border-left:4px solid #2e7d32;padding:16px;margin-bottom:20px">
-  <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#2e7d32;letter-spacing:1px">CONTA DESBLOQUEADA</p>
-  <p style="margin:0;font-size:13px;color:#1b5e20;line-height:1.7">
-    Sua conta no <strong>IBSALA</strong> foi <strong style="color:#2e7d32">desbloqueada</strong>.
+<div style="background:#ffffff;border:1px solid #28a745;border-left:4px solid #28a745;padding:16px;margin-bottom:20px">
+  <p style="margin:0 0 8px;font-size:12px;font-weight:bold;color:#28a745;letter-spacing:1px">CONTA DESBLOQUEADA</p>
+  <p style="margin:0;font-size:13px;color:#1a6630;line-height:1.7">
+    Sua conta no <strong>IBSALA</strong> foi <strong style="color:#28a745">desbloqueada</strong>.
     Voce ja pode acessar normalmente e voltara a receber as
     <strong>notificacoes diarias</strong> de aulas conforme seus slots cadastrados.
   </p>
@@ -665,11 +648,11 @@ def email_recuperar_username(username, email):
     assunto = "[IBSALA] Recuperação de username"
     content = (
         "<p style='margin:0 0 16px'>Você solicitou a recuperação do seu username. Aqui está:</p>"
-        "<div style='text-align:center;border:2px solid #1a73e8;padding:20px;margin-bottom:20px;background:#ffffff'>"
-        f"<span style='font-size:24px;font-weight:bold;color:#1a73e8;letter-spacing:2px'>@{username}</span>"
+        "<div style='text-align:center;border:2px solid #002555;padding:20px;margin-bottom:20px;background:#ffffff'>"
+        f"<span style='font-size:24px;font-weight:bold;color:#002555;letter-spacing:2px'>@{username}</span>"
         "</div>"
         "<p style='margin:0 0 8px;font-size:13px;color:#444'>Acesse o site com esse username:</p>"
-        "<p style='margin:0'><a href='https://ibsala.com.br' style='color:#1a73e8;font-size:14px;font-weight:bold'>ibsala.com.br</a></p>"
+        "<p style='margin:0'><a href='https://ibsala.com.br' style='color:#002555;font-size:14px;font-weight:bold'>ibsala.com.br</a></p>"
         "<p style='margin:20px 0 0;font-size:12px;color:#888'>Se não foi você que solicitou, ignore este email.</p>"
     )
     corpo = _email_wrapper(content, "Recuperação de username")
@@ -693,27 +676,27 @@ def _montar_email_aulas(username, dia, aulas):
                 data = s.get("DATA") or s.get("Data") or ""
                 sala_rows += (
                     f"<tr>"
-                    f"<td style='padding:8px;border-bottom:1px solid #e0e0e0;font-weight:bold;color:#1a1a1a'>{sala}</td>"
-                    f"<td style='padding:8px;border-bottom:1px solid #e0e0e0;color:#1a73e8'>{hora}</td>"
-                    f"<td style='padding:8px;border-bottom:1px solid #e0e0e0;color:#444'>{data}</td>"
+                    f"<td style='padding:8px;border-bottom:1px solid #dee2e6;font-weight:bold;color:#121212'>{sala}</td>"
+                    f"<td style='padding:8px;border-bottom:1px solid #dee2e6;color:#002555'>{hora}</td>"
+                    f"<td style='padding:8px;border-bottom:1px solid #dee2e6;color:#444'>{data}</td>"
                     f"</tr>"
                 )
 
         blocos += (
-            "<div style='border:1px solid #e0e0e0;border-left:3px solid #1a73e8;"
+            "<div style='border:1px solid #dee2e6;border-left:3px solid #002555;"
             "margin-bottom:16px;background:#ffffff'>"
-            f"<div style='padding:12px 14px;background:#ffffff;border-bottom:1px solid #e0e0e0'>"
-            f"<div style='font-weight:bold;font-size:14px;color:#1a1a1a'>{a['disciplina']}</div>"
+            f"<div style='padding:12px 14px;background:#ffffff;border-bottom:1px solid #dee2e6'>"
+            f"<div style='font-weight:bold;font-size:14px;color:#121212'>{a['disciplina']}</div>"
             f"<div style='font-size:12px;color:#666;margin-top:3px'>{a['turma']} &middot; {a['professor']}</div>"
             f"</div>"
             "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse'>"
             "<thead><tr>"
             "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
-            "border-bottom:2px solid #e0e0e0;background:#ffffff'>SALA</th>"
+            "border-bottom:2px solid #dee2e6;background:#ffffff'>SALA</th>"
             "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
-            "border-bottom:2px solid #e0e0e0;background:#ffffff'>HORÁRIO</th>"
+            "border-bottom:2px solid #dee2e6;background:#ffffff'>HORÁRIO</th>"
             "<th style='text-align:left;padding:8px;font-size:11px;color:#666;font-weight:bold;"
-            "border-bottom:2px solid #e0e0e0;background:#ffffff'>DATA</th>"
+            "border-bottom:2px solid #dee2e6;background:#ffffff'>DATA</th>"
             "</tr></thead>"
             f"<tbody>{sala_rows}</tbody>"
             "</table></div>"
@@ -722,7 +705,7 @@ def _montar_email_aulas(username, dia, aulas):
     assunto = f"[IBtech] Suas aulas de {dia} — {_hoje()}"
     content = (
         f"<p style='margin:0 0 4px;font-size:12px;color:#666'>"
-        f"<strong style='color:#1a73e8'>{dia}</strong> &middot; {_hoje()}</p>"
+        f"<strong style='color:#002555'>{dia}</strong> &middot; {_hoje()}</p>"
         f"<p style='margin:0 0 20px;font-size:13px;color:#444'>"
         f"Aulas de hoje para <strong>@{username}</strong>:</p>"
         + blocos
@@ -783,6 +766,7 @@ def notificar_todos(df, dia, slot=None):
             if linhas.empty:
                 linhas = filtrar_df(df, " ".join(disciplina.split()[:3]))
             if linhas.empty:
+                print(f"[notificar] Disciplina nao encontrada: '{disciplina}' ({turma}) -- pulando.")
                 continue
 
             # Filtra linhas cujo horario na planilha pertence ao slot
@@ -843,13 +827,18 @@ def _conectar_via_oauth():
         creds = OAuthCredentials.from_authorized_user_file(token_file, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
+            try:
+                creds.refresh(Request())
+            except Exception as e:
+                print(f"[warn] Falha ao renovar token OAuth: {e} -- descartando token.")
+                creds = None
+        if not creds or not creds.valid:
             oauth_file = os.path.join(BASE_DIR, "oauth_credentials.json")
             if not os.path.exists(oauth_file):
                 return None
-            flow = InstalledAppFlow.from_client_secrets_file(oauth_file, SCOPES)
-            creds = flow.run_local_server(port=0)
+            # Em servidor headless run_local_server nao funciona -- abortar
+            print("[warn] Token OAuth invalido sem renovacao interativa disponivel em servidor headless.")
+            return None
         with open(token_file, "w") as f:
             f.write(creds.to_json())
     return gspread.authorize(creds)
@@ -861,8 +850,8 @@ def buscar_planilha_remota():
     if not client:
         try:
             client = _conectar_via_oauth()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[warn] Falha na conexao OAuth: {e}")
 
     if client:
         try:
@@ -881,6 +870,7 @@ def buscar_planilha_remota():
             data = resp.read().decode("utf-8")
         df = pd.read_csv(io.StringIO(data))
 
+    df = _limpar_texto_df(df)
     return df
 
 
@@ -888,6 +878,20 @@ def buscar_planilha_remota():
 
 def csv_hoje_existe():
     return os.path.exists(_csv_hoje())
+
+
+def _limpar_texto_df(df):
+    """Remove caracteres de controle C1 (U+0080-U+009F) de todas as colunas string.
+    Esses caracteres surgem de encoding corrompido na planilha da instituicao."""
+    import unicodedata
+    def _limpar(val):
+        if not isinstance(val, str):
+            return val
+        # Remove C1 control chars (U+0080-U+009F) que nao tem representacao visual
+        val = re.sub(r'[-]', '', val)
+        # Normaliza para NFC (forma composta canonica)
+        return unicodedata.normalize('NFC', val)
+    return df.apply(lambda col: col.map(_limpar) if col.dtype == object else col)
 
 
 def _normalizar_colunas(df):
@@ -901,7 +905,6 @@ def _normalizar_colunas(df):
                     df[col].notna() & (df[col] != ""), df["Horario"]
                 )
                 df = df.drop(columns=[col])
-            break
     return df
 
 
@@ -909,7 +912,14 @@ def carregar_do_cache():
     csv = _csv_hoje()
     print(f"[cache] Carregando CSV do dia: {csv}")
     df = pd.read_csv(csv, encoding="utf-8-sig", dtype=str)
-    return _normalizar_colunas(df)
+    df = _limpar_texto_df(df)
+    df = _normalizar_colunas(df)
+    # CSV antigo pode nao ter coluna Codigo — aplica split se necessario
+    if "Disciplina" in df.columns and "Codigo" not in df.columns:
+        extraido = df["Disciplina"].apply(_extrair_codigo_disciplina)
+        df.insert(df.columns.get_loc("Disciplina"), "Codigo", extraido.apply(lambda x: x[0]))
+        df["Disciplina"] = extraido.apply(lambda x: x[1])
+    return df
 
 
 def _excluir_csvs_anteriores():
@@ -929,16 +939,17 @@ def atualizar_historico_disciplinas(df):
             turma      = str(row.get("Turma", "") or "").strip()
             disciplina = str(row.get("Disciplina", "") or "").strip()
             professor  = str(row.get("Professor", "") or "").strip()
+            codigo     = str(row.get("Codigo", "") or "").strip()
             if not turma or not disciplina:
                 continue
             try:
                 cur = con.execute(
-                    "INSERT OR IGNORE INTO disciplinas_historico (turma, disciplina, professor) VALUES (?, ?, ?)",
-                    (turma, disciplina, professor)
+                    "INSERT OR IGNORE INTO disciplinas_historico (turma, disciplina, professor, codigo) VALUES (?, ?, ?, ?)",
+                    (turma, disciplina, professor, codigo)
                 )
                 inseridos += cur.rowcount
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[warn] Erro ao inserir disciplina no historico: {e}")
     if inseridos:
         print(f"[historico] {inseridos} disciplina(s) inedita(s) adicionadas.")
 
@@ -1022,6 +1033,17 @@ def _limpar_valor(val):
     return val.encode("utf-8", errors="ignore").decode("utf-8").strip()
 
 
+
+def _extrair_codigo_disciplina(texto):
+    """Separa 'IBM0022-8001/ JURISDICAO E PROCESSO' em ('IBM0022-8001', 'JURISDICAO E PROCESSO').
+    Se nao houver '/', retorna ('', texto).
+    """
+    if '/' in str(texto):
+        codigo, nome = str(texto).split('/', 1)
+        return codigo.strip(), nome.strip()
+    return '', str(texto).strip()
+
+
 def parsear_e_organizar(df_bruto):
     categoria_atual = None
     colunas_atuais  = None
@@ -1058,6 +1080,11 @@ def parsear_e_organizar(df_bruto):
         print("[parse] Nenhum registro valido encontrado na planilha.")
         return pd.DataFrame()
     df = pd.DataFrame(todos_registros)
+    # Separa codigo e nome da disciplina
+    if "Disciplina" in df.columns:
+        extraido = df["Disciplina"].apply(_extrair_codigo_disciplina)
+        df.insert(df.columns.get_loc("Disciplina"), "Codigo", extraido.apply(lambda x: x[0]))
+        df["Disciplina"] = extraido.apply(lambda x: x[1])
     return _normalizar_colunas(df)
 
 
@@ -1075,7 +1102,7 @@ def filtrar_df(df, termo):
     """
     if df.empty:
         return df.reset_index(drop=True)
-    colunas = [c for c in df.columns if c != "Categoria"]
+    colunas = [c for c in df.columns if c not in ("Categoria", "Codigo")]
     texto_linha = df[colunas].fillna("").astype(str).apply(
         lambda row: _normalizar_texto(" ".join(row.values)), axis=1
     )

@@ -248,7 +248,12 @@ def cadastrar():
     for m in materias:
         vp.salvar_materia(aluno_id, m["dia"], m["turma"], m["disciplina"], m["professor"], m.get("slot"))
 
-    threading.Thread(target=vp.email_boas_vindas, args=(username, email, materias), daemon=True).start()
+    def _enviar_boas_vindas():
+        try:
+            vp.email_boas_vindas(username, email, materias)
+        except Exception as e:
+            print(f"[email] Falha ao enviar boas-vindas para {email}: {e}")
+    threading.Thread(target=_enviar_boas_vindas, daemon=True).start()
 
     return jsonify({"ok": True, "aluno_id": aluno_id, "username": username,
                     "salvas": len(materias)})
@@ -372,7 +377,7 @@ def adm_disciplinas():
         return jsonify({"erro": "Nao autorizado"}), 401
     rows = vp.listar_disciplinas_historico()
     return jsonify({"registros": [
-        {"id": r[0], "turma": r[1], "disciplina": r[2], "professor": r[3]} for r in rows
+        {"id": r[0], "turma": r[1], "disciplina": r[2], "professor": r[3], "codigo": r[4] if len(r) > 4 else ""} for r in rows
     ]})
 
 
@@ -381,7 +386,7 @@ def adm_disc_adicionar():
     data = request.json or {}
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
-    vp.adicionar_disciplina_historico(data["turma"], data["disciplina"], data["professor"])
+    vp.adicionar_disciplina_historico(data["turma"], data["disciplina"], data["professor"], data.get("codigo", ""))
     return jsonify({"ok": True})
 
 
@@ -390,7 +395,7 @@ def adm_disc_editar():
     data = request.json or {}
     if not check_adm(data):
         return jsonify({"erro": "Nao autorizado"}), 401
-    vp.editar_disciplina_historico(data["id"], data["turma"], data["disciplina"], data["professor"])
+    vp.editar_disciplina_historico(data["id"], data["turma"], data["disciplina"], data["professor"], data.get("codigo", ""))
     return jsonify({"ok": True})
 
 
@@ -584,9 +589,11 @@ def adm_recapturar():
         return jsonify({"erro": "Nao autorizado"}), 401
     try:
         df_bruto = vp.buscar_planilha_remota()
-        _df = vp.parsear_e_organizar(df_bruto)
-        vp.salvar_csv(_df)
-        return jsonify({"ok": True, "total": int(len(_df))})
+        df_novo = vp.parsear_e_organizar(df_bruto)
+        vp.salvar_csv(df_novo)
+        with _df_lock:
+            _df = df_novo
+        return jsonify({"ok": True, "total": int(len(df_novo))})
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
 

@@ -108,7 +108,7 @@
   <div id="s-login" class="screen">
     <button class="btn-back" onclick="goto('s-main')">&larr; voltar</button>
     <p class="stitle">acesso do aluno</p>
-    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Sem senha &mdash; basta digitar o <strong style="color:var(--text)">username</strong> que voce escolheu quando criou o cadastro. Primeira vez aqui? Volte ao menu e clique em <strong style="color:var(--text)">Criar cadastro</strong>.</p>
+    <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;line-height:1.7">Sem senha &mdash; basta digitar o <strong style="color:var(--text)">username</strong> que voce escolheu quando criou o cadastro. Primeira vez aqui? <span onclick="goto('s-cadastro')" style="color:var(--accent);text-decoration:underline;cursor:pointer">Criar cadastro &rarr;</span></p>
     <div class="igroup">
       <span class="iprefix">@</span>
       <input type="text" id="login-inp" placeholder="username"
@@ -116,9 +116,6 @@
       <button class="btn primary" onclick="doLogin()">entrar</button>
     </div>
     <div id="login-msg"></div>
-    <div style="margin-top:12px">
-      <button class="btn sm" style="width:100%;background:var(--bg2);color:var(--text);border-color:var(--border)" onclick="goto('s-cadastro')">+ ainda nao tenho cadastro &rarr; criar agora</button>
-    </div>
     <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
       <p style="color:var(--text-dim);font-size:12px;margin-bottom:8px">esqueci meu username</p>
       <div class="igroup">

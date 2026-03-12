@@ -145,6 +145,16 @@ def init_db():
                 UNIQUE(turma, disciplina, professor)
             )
         """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS eventos (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts         TEXT    NOT NULL,
+                evento     TEXT    NOT NULL,
+                session_id TEXT,
+                aluno_id   INTEGER,
+                payload    TEXT
+            )
+        """)
 
 
 def buscar_aluno(username):
@@ -167,6 +177,21 @@ def aluno_bloqueado(aluno_id):
     return bool(row and row[0])
 
 
+def registrar_evento(evento, session_id=None, aluno_id=None, payload=None):
+    """Registra uma ação do usuário na tabela eventos."""
+    import json as _json
+    ts = datetime.now().isoformat()
+    payload_str = _json.dumps(payload, ensure_ascii=False) if payload else None
+    try:
+        with get_db() as con:
+            con.execute(
+                "INSERT INTO eventos (ts, evento, session_id, aluno_id, payload) VALUES (?,?,?,?,?)",
+                (ts, evento, session_id, aluno_id, payload_str)
+            )
+    except Exception as e:
+        print(f"[eventos] Erro ao registrar '{evento}': {e}")
+
+
 def set_bloqueio_aluno(aluno_id, bloqueado):
     with get_db() as con:
         con.execute("UPDATE alunos SET bloqueado=? WHERE id=?", (int(bloqueado), aluno_id))
@@ -180,7 +205,10 @@ def criar_aluno(username, email="", receber_email=1):
             "INSERT INTO alunos (username, email, criado, receber_email) VALUES (?, ?, ?, ?)",
             (username, email, _hoje(), int(receber_email))
         )
-        return cur.lastrowid
+        aluno_id = cur.lastrowid
+    if email:
+        resend_contact_create(username, email)
+    return aluno_id
 
 def get_receber_email(aluno_id):
     with get_db() as con:
@@ -190,6 +218,9 @@ def get_receber_email(aluno_id):
 def set_receber_email(aluno_id, valor):
     with get_db() as con:
         con.execute("UPDATE alunos SET receber_email=? WHERE id=?", (int(valor), aluno_id))
+        row = con.execute("SELECT email FROM alunos WHERE id=?", (aluno_id,)).fetchone()
+    if row and row[0]:
+        resend_contact_update(row[0], unsubscribed=not bool(valor))
 
 
 def listar_todos_alunos():
@@ -225,8 +256,11 @@ def editar_aluno(aluno_id, username, email):
 
 def excluir_aluno(aluno_id):
     with get_db() as con:
+        row = con.execute("SELECT email FROM alunos WHERE id=?", (aluno_id,)).fetchone()
         con.execute("DELETE FROM materias WHERE aluno_id=?", (aluno_id,))
         con.execute("DELETE FROM alunos WHERE id=?", (aluno_id,))
+    if row and row[0]:
+        resend_contact_delete(row[0])
 
 
 def listar_disciplinas_historico():
@@ -411,8 +445,56 @@ def buscar_aluno_por_id(aluno_id):
 
 # ── Resend API ────────────────────────────────────────────────────────────────
 
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-REMETENTE      = "IBSALA <avisos@ibsala.com.br>"
+RESEND_API_KEY   = os.environ.get("RESEND_API_KEY", "")
+RESEND_AUDIENCE  = os.environ.get("RESEND_AUDIENCE_ID", "017fa19a-cad3-42cb-92f1-5c2b39c33b52")
+REMETENTE        = "IBSALA <avisos@ibsala.com.br>"
+
+
+def _resend_client():
+    import resend as _resend
+    _resend.api_key = RESEND_API_KEY
+    return _resend
+
+
+def resend_contact_create(username, email):
+    """Adiciona aluno na audiência do Resend."""
+    try:
+        r = _resend_client()
+        r.Contacts.create({
+            "audience_id": RESEND_AUDIENCE,
+            "email": email,
+            "first_name": username,
+            "unsubscribed": False,
+        })
+        print(f"[resend] Contato criado: {username} <{email}>")
+    except Exception as e:
+        print(f"[resend] Erro ao criar contato {email}: {e}")
+
+
+def resend_contact_update(email, unsubscribed: bool):
+    """Atualiza status de inscrição do contato no Resend."""
+    try:
+        r = _resend_client()
+        r.Contacts.update({
+            "audience_id": RESEND_AUDIENCE,
+            "email": email,
+            "unsubscribed": unsubscribed,
+        })
+        status = "desativado" if unsubscribed else "ativado"
+        print(f"[resend] Contato {email} {status}")
+    except Exception as e:
+        print(f"[resend] Erro ao atualizar contato {email}: {e}")
+
+
+def resend_contact_delete(email):
+    """Remove contato da audiência do Resend."""
+    try:
+        r = _resend_client()
+        r.Contacts.remove(audience_id=RESEND_AUDIENCE, email=email)
+        print(f"[resend] Contato removido: {email}")
+    except Exception as e:
+        print(f"[resend] Erro ao remover contato {email}: {e}")
+
 
 def enviar_email(para, assunto, corpo_html):
     if not para or not str(para).strip():
@@ -976,9 +1058,9 @@ def salvar_csv_incremental(df_novo):
                 df_merged = pd.concat([d_idx, novas]).reset_index()
             except Exception as e:
                 print(f"[cache] Erro no merge indexado ({e}), usando concat+dedup")
-                df_merged = pd.concat([df_diario, df_novo]).drop_duplicates()
+                df_merged = pd.concat([df_diario, df_novo]).drop_duplicates(subset=KEY_COLS, keep="last")
         else:
-            df_merged = pd.concat([df_diario, df_novo]).drop_duplicates()
+            df_merged = pd.concat([df_diario, df_novo]).drop_duplicates(subset=KEY_COLS, keep="last")
 
         df_merged.to_csv(path, index=False, encoding="utf-8-sig")
         n_add = len(df_merged) - len(df_diario)

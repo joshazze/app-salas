@@ -158,14 +158,20 @@ def salas_livres():
     return jsonify({"total": len(livres), "salas": livres})
 
 
+def _sid():
+    return (request.json or {}).get("session_id") or request.headers.get("X-Session-Id")
+
+
 @app.route("/api/buscar", methods=["POST"])
 def buscar():
-    termo = (request.json or {}).get("termo", "").strip()
+    data  = request.json or {}
+    termo = data.get("termo", "").strip()
     if not termo:
         return jsonify({"erro": "Termo vazio"}), 400
     df_hoje = get_df_hoje()
     resultado = vp.filtrar_df(df_hoje, termo)
     registros = df_para_lista(resultado)
+    vp.registrar_evento("busca", session_id=_sid(), payload={"termo": termo, "resultados": len(registros)})
     return jsonify({"termo": termo, "total": len(registros), "registros": registros})
 
 
@@ -173,20 +179,24 @@ def buscar():
 def categoria(nome):
     df_hoje = get_df_hoje()
     subset = df_hoje[df_hoje["Categoria"] == nome]
+    vp.registrar_evento("categoria", session_id=_sid(), payload={"categoria": nome})
     return jsonify({"categoria": nome, "registros": df_para_lista(subset)})
 
 
 @app.route("/api/login", methods=["POST"])
 def login():
-    username = (request.json or {}).get("username", "").strip()
+    data     = request.json or {}
+    username = data.get("username", "").strip()
     if not username:
         return jsonify({"erro": "Username vazio"}), 400
     aluno = vp.buscar_aluno(username)
     if not aluno:
+        vp.registrar_evento("login_falhou", session_id=_sid(), payload={"username": username})
         return jsonify({"encontrado": False})
     aluno_id, username, criado = aluno
     if vp.aluno_bloqueado(aluno_id):
         return jsonify({"encontrado": False, "bloqueado": True})
+    vp.registrar_evento("login", session_id=_sid(), aluno_id=aluno_id)
     return jsonify({"encontrado": True, "aluno_id": aluno_id,
                     "username": username, "criado": criado})
 
@@ -247,6 +257,8 @@ def cadastrar():
     aluno_id = vp.criar_aluno(username, email, receber_email=receber_email)
     for m in materias:
         vp.salvar_materia(aluno_id, m["dia"], m["turma"], m["disciplina"], m["professor"], m.get("slot"))
+    vp.registrar_evento("cadastro", session_id=_sid(), aluno_id=aluno_id,
+                        payload={"username": username, "materias": len(materias)})
 
     def _enviar_boas_vindas():
         try:

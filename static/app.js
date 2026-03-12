@@ -1,4 +1,4 @@
-const G={alunoId:null,username:null,statusData:null,cadUser:null,cadMats:[]};
+const G={alunoId:null,username:null,statusData:null,cadUser:null,cadMats:[],sessionId:(Math.random().toString(36).slice(2)+Date.now().toString(36))};
 function goto(id,_fromPop){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -11,8 +11,8 @@ function goto(id,_fromPop){
   if(!_fromPop)history.pushState({screen:id},'','');
 }
 async function api(url,body){
-  const o={headers:{'Content-Type':'application/json'}};
-  if(body){o.method='POST';o.body=JSON.stringify(body);}
+  const o={headers:{'Content-Type':'application/json','X-Session-Id':G.sessionId}};
+  if(body){o.method='POST';o.body=JSON.stringify({...body,session_id:G.sessionId});}
   try{
     const r=await fetch(url,o);
     if(!r.ok)return{erro:`Erro HTTP ${r.status}`};

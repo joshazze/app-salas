@@ -409,54 +409,23 @@ def buscar_aluno_por_id(aluno_id):
         ).fetchone()
 
 
-# ── Gmail API ─────────────────────────────────────────────────────────────────
+# ── Resend API ────────────────────────────────────────────────────────────────
 
-GMAIL_SCOPES     = ["https://www.googleapis.com/auth/gmail.send"]
-GMAIL_TOKEN_FILE = os.path.join(BASE_DIR, "gmail_token.json")
-GMAIL_CREDS_FILE = os.path.join(BASE_DIR, "gmail_credentials.json")
-
-
-def _gmail_service():
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    from googleapiclient.discovery import build
-
-    creds = None
-    if os.path.exists(GMAIL_TOKEN_FILE):
-        creds = OAuthCredentials.from_authorized_user_file(GMAIL_TOKEN_FILE, GMAIL_SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-            except Exception as e:
-                print(f"[gmail] Falha ao refreshar token: {e}")
-                creds = None
-        if not creds or not creds.valid:
-            flow = InstalledAppFlow.from_client_secrets_file(GMAIL_CREDS_FILE, GMAIL_SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open(GMAIL_TOKEN_FILE, "w") as f:
-            f.write(creds.to_json())
-    return build("gmail", "v1", credentials=creds)
-
-
-REMETENTE = "IBSALA <salas.ibtech@gmail.com>"
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+REMETENTE      = "IBSALA <avisos@ibsala.com.br>"
 
 def enviar_email(para, assunto, corpo_html):
     if not para or not str(para).strip():
         print(f"[email] Destinatario vazio, abortando: {assunto}")
         return
-    import base64
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-
-    msg = MIMEMultipart("alternative")
-    msg["From"]    = REMETENTE
-    msg["To"]      = para
-    msg["Subject"] = assunto
-    msg.attach(MIMEText(corpo_html, "html", "utf-8"))
-
-    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode()
-    service = _gmail_service()
-    service.users().messages().send(userId="me", body={"raw": raw}).execute()
+    import resend
+    resend.api_key = RESEND_API_KEY
+    resend.Emails.send({
+        "from":    REMETENTE,
+        "to":      [para],
+        "subject": assunto,
+        "html":    corpo_html,
+    })
 
 
 

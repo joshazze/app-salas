@@ -192,7 +192,7 @@ async function doSalasLivres(){
     const chips=s.salas.length
       ?s.salas.map(r=>`<span style="padding:5px 12px;border:1px solid var(--cyan);color:var(--cyan);font-size:12px;font-weight:bold">${r}</span>`).join('')
       :`<span style="color:var(--text-dim);font-size:12px">Nenhuma sala livre${filtro?` com "${filtro}"`:''}.</span>`;
-    html+=`<details style="margin-bottom:8px" ${ativo?'open':''}>
+    html+=`<details style="margin-bottom:8px" ${(ativo||filtro)?'open':''}>
       <summary style="cursor:pointer;list-style:none;padding:10px 14px;background:var(--bg2);border:1px solid var(--border);display:flex;align-items:center;gap:6px;user-select:none">
         <span class="slot-arrow" style="color:var(--cyan);font-size:11px">&#9654;</span>
         <span style="font-weight:bold;font-size:13px;color:var(--text)">${s.label}</span>

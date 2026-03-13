@@ -19,9 +19,11 @@ CORS(app, origins=["https://ibsala.com.br", "https://www.ibsala.com.br", "http:/
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
-ADM_USERNAME = "adm"
-ADM_PASSWORD = os.environ.get("ADM_PASSWORD", "")
-LOCK_FILE    = os.path.join(os.path.dirname(__file__), "site_lock.json")
+ADM_USERNAME           = "adm"
+ADM_PASSWORD           = os.environ.get("ADM_PASSWORD", "")
+RESEND_WEBHOOK_SECRET  = os.environ.get("RESEND_WEBHOOK_SECRET", "")
+FORWARD_TO             = "salas.ibtech@gmail.com"
+LOCK_FILE              = os.path.join(os.path.dirname(__file__), "site_lock.json")
 
 
 def site_travado():
@@ -702,6 +704,76 @@ def adm_email_teste():
         return jsonify({"ok": True, "enviado_para": email})
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
+
+
+# ── Inbound email ─────────────────────────────────────────────────────────────
+
+@app.route("/api/inbound/suporte", methods=["POST"])
+def inbound_suporte():
+    import resend as _resend
+
+    # 1. Verificar assinatura do Resend
+    if RESEND_WEBHOOK_SECRET:
+        try:
+            _resend.Webhooks.verify({
+                "payload":        request.get_data(as_text=True),
+                "headers":        {
+                    "id":        request.headers.get("svix-id", ""),
+                    "timestamp": request.headers.get("svix-timestamp", ""),
+                    "signature": request.headers.get("svix-signature", ""),
+                },
+                "webhook_secret": RESEND_WEBHOOK_SECRET,
+            })
+        except Exception as e:
+            print(f"[inbound] Assinatura invalida: {e}")
+            return jsonify({"erro": "Unauthorized"}), 401
+
+    # 2. Extrair email_id do payload
+    data     = request.get_json(silent=True) or {}
+    email_id = (data.get("data") or {}).get("email_id")
+    if not email_id:
+        return jsonify({"erro": "email_id ausente"}), 400
+
+    # 3. Buscar corpo completo via SDK
+    try:
+        _resend.api_key = vp.RESEND_API_KEY
+        email = _resend.EmailsReceiving.get(email_id)
+    except Exception as e:
+        print(f"[inbound] Erro ao buscar email {email_id}: {e}")
+        return jsonify({"erro": "Falha ao buscar email"}), 500
+
+    remetente = getattr(email, "from", None) or (data.get("data") or {}).get("from", "desconhecido")
+    assunto   = getattr(email, "subject", None) or (data.get("data") or {}).get("subject", "(sem assunto)")
+    html_body = getattr(email, "html", None) or ""
+    text_body = getattr(email, "text", None) or ""
+
+    # 4. Montar corpo do email encaminhado
+    safe_remetente = vp._email_wrapper(
+        f"<p style='font-size:12px;color:#888;margin:0 0 16px'>"
+        f"<strong>De:</strong> {remetente}<br>"
+        f"<strong>Assunto:</strong> {assunto}"
+        f"</p>"
+        f"<hr style='border:none;border-top:1px solid #e0e0e0;margin:0 0 16px'/>"
+        + (html_body if html_body else f"<pre style='white-space:pre-wrap;font-size:13px'>{text_body}</pre>"),
+        f"Suporte: {assunto}"
+    )
+
+    # 5. Encaminhar para o Gmail
+    try:
+        _resend.api_key = vp.RESEND_API_KEY
+        _resend.Emails.send({
+            "from":     "IBSALA Suporte <avisos@ibsala.com.br>",
+            "to":       [FORWARD_TO],
+            "reply_to": [remetente],
+            "subject":  f"[Suporte] {assunto}",
+            "html":     safe_remetente,
+        })
+        print(f"[inbound] Encaminhado de {remetente} → {FORWARD_TO} | assunto: {assunto}")
+    except Exception as e:
+        print(f"[inbound] Erro ao encaminhar: {e}")
+        return jsonify({"erro": "Falha ao encaminhar"}), 500
+
+    return jsonify({"ok": True})
 
 
 # ── Salas ─────────────────────────────────────────────────────────────────────

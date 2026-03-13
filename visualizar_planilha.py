@@ -43,11 +43,6 @@ def _dia_pt():
 def _csv_hoje():
     return os.path.join(PASTA_CACHE, f"mapa_salas_{_hoje()}.csv")
 
-# Compatibilidade com código existente (scheduler atualiza diretamente)
-HOJE        = _hoje()
-DIA_SEMANA  = datetime.now().strftime("%A").upper()
-CSV_HOJE    = _csv_hoje()
-DIA_PT      = _dia_pt()
 
 TITULOS_CATEGORIA = [
     "GRADUAÇÃO - MANHÃ",
@@ -58,12 +53,12 @@ TITULOS_CATEGORIA = [
 
 # Faixas de horario para notificacao por slot (limites em minutos a partir de 00:00)
 SLOTS = {
-    "manha1": {"label": "1º Manhã",  "inicio": (6,  0), "fim": (9, 29)},
-    "manha2": {"label": "2º Manhã",  "inicio": (9, 30), "fim": (12, 59)},
-    "tarde1": {"label": "1º Tarde",  "inicio": (13, 0), "fim": (13, 59)},
-    "tarde2": {"label": "2º Tarde",  "inicio": (14, 0), "fim": (17, 59)},
-    "noite1": {"label": "1º Noite",  "inicio": (18, 0), "fim": (18, 59)},
-    "noite2": {"label": "2º Noite",  "inicio": (19, 0), "fim": (23, 59)},
+    "manha1": {"label": "1º Manhã",  "hora": "07:30", "inicio": (6,  0), "fim": (9, 29)},
+    "manha2": {"label": "2º Manhã",  "hora": "09:50", "inicio": (9, 30), "fim": (12, 59)},
+    "tarde1": {"label": "1º Tarde",  "hora": "13:00", "inicio": (13, 0), "fim": (15, 29)},
+    "tarde2": {"label": "2º Tarde",  "hora": "15:50", "inicio": (15, 30), "fim": (17, 59)},
+    "noite1": {"label": "1º Noite",  "hora": "18:00", "inicio": (18, 0), "fim": (18, 59)},
+    "noite2": {"label": "2º Noite",  "hora": "19:00", "inicio": (19, 0), "fim": (23, 59)},
 }
 
 
@@ -292,7 +287,7 @@ def excluir_disciplina_historico(disc_id):
 
 
 
-_SALAS_IGNORADAS = {"ONLINE", "EAD", "REMOTO", "HIBRIDO", "HIBRIDA", "A DEFINIR", "NAO DEFINIDA", ""}
+_SALAS_IGNORADAS = {"ONLINE", "EAD", "REMOTO", "HIBRIDO", "HIBRIDA", "A DEFINIR", "NAO DEFINIDA", "CANCELADA", "VISITA EXTERNA", "VISITA", ""}
 
 def atualizar_historico_salas(df):
     """Armazena permanentemente todas as salas ineditas encontradas na planilha."""
@@ -374,12 +369,6 @@ def listar_salas_livres_por_slot(df_hoje):
         for slot in SLOTS
     }
 
-
-
-def contar_salas():
-    with get_db() as con:
-        row = con.execute("SELECT COUNT(*) FROM salas_historico").fetchone()
-    return row[0] if row else 0
 
 
 def salvar_materia(aluno_id, dia, turma, disciplina, professor, slot=None):
@@ -538,7 +527,7 @@ def _email_wrapper(content: str, subtitle: str = "IBtech") -> str:
         "<tr><td style='background:#f8f9fa;padding:14px 28px;border-top:1px solid #dee2e6'>"
         "<table width='100%' cellpadding='0' cellspacing='0' border='0'><tr>"
         f"<td><p style='margin:0;font-size:11px;color:#888888;font-family:{font}'>"
-        "ibsala.com.br &mdash; consulta de salas e horarios IBtech</p></td>"
+        "ibsala.com.br &mdash; consulta de salas e horarios IBtech &middot; <a href='mailto:suporte@ibsala.com.br' style='color:#888888;text-decoration:none'>suporte@ibsala.com.br</a></p></td>"
         "<td align='right'><a href='https://ibsala.com.br' "
         "style='color:#002555;font-size:11px;font-weight:600;text-decoration:none'>acessar site &rarr;</a></td>"
         "</tr></table></td></tr>"
@@ -566,9 +555,7 @@ def email_boas_vindas(username, email, materias):
             for m in mats:
                 slot_label = ''
                 if m.get("slot"):
-                    slot_labels = {"manha1":"1º Manhã (07:30)","manha2":"2º Manhã (09:50)",
-                                   "tarde1":"1º Tarde (13:00)","tarde2":"2º Tarde (14:00)",
-                                   "noite1":"1º Noite (18:00)","noite2":"2º Noite (19:00)"}
+                    slot_labels = {k: f"{v['label']} ({v['hora']})" for k, v in SLOTS.items()}
                     slot_label = f" &middot; <span style='color:#002555'>{slot_labels.get(m['slot'], m['slot'])}</span>"
                 else:
                     slot_label = " &middot; <span style='color:#dc3545'>sem turno &mdash; configure em Configuracoes</span>"
@@ -765,25 +752,6 @@ def _montar_email_aulas(username, dia, aulas):
     )
     corpo = _email_wrapper(content, f"Aulas de {dia}")
     return assunto, corpo
-
-def _horario_na_janela(horario_str, janela_fim, janela_inicio=None):
-    if not horario_str or not janela_fim:
-        return True
-    try:
-        inicio_str = str(horario_str).split("/")[0].strip()[:5]
-        h1, m1 = map(int, inicio_str.split(":"))
-        minutos_aula = h1 * 60 + m1
-        h2, m2 = map(int, janela_fim.split(":"))
-        if minutos_aula > h2 * 60 + m2:
-            return False
-        if janela_inicio:
-            h0, m0 = map(int, janela_inicio.split(":"))
-            if minutos_aula < h0 * 60 + m0:
-                return False
-        return True
-    except Exception:
-        return True
-
 
 def notificar_todos(df, dia, slot=None):
     """Envia email apenas com as disciplinas do slot especificado.
@@ -1162,3 +1130,78 @@ def filtrar_df(df, termo):
     for palavra in palavras:
         mascara &= texto_linha.str.contains(palavra, na=False, regex=False)
     return df[mascara].reset_index(drop=True)
+
+
+# ── Banco de Salas ────────────────────────────────────────────────────────────
+
+def listar_salas_historico():
+    """Retorna todas as salas com predio (P1 ou P2)."""
+    with get_db() as con:
+        rows = con.execute(
+            "SELECT id, sala, COALESCE(predio,'P1') FROM salas_historico ORDER BY predio, sala"
+        ).fetchall()
+    return [{"id": r[0], "sala": r[1], "predio": r[2]} for r in rows]
+
+
+def adicionar_sala_historico(sala, predio="P1"):
+    sala = sala.strip()
+    predio = predio.strip().upper()
+    if predio not in ("P1", "P2"):
+        predio = "P1"
+    with get_db() as con:
+        con.execute(
+            "INSERT OR IGNORE INTO salas_historico (sala, predio) VALUES (?, ?)", (sala, predio)
+        )
+
+
+def editar_sala_historico(sala_id, sala, predio):
+    sala = sala.strip()
+    predio = predio.strip().upper()
+    if predio not in ("P1", "P2"):
+        predio = "P1"
+    with get_db() as con:
+        con.execute(
+            "UPDATE salas_historico SET sala=?, predio=? WHERE id=?", (sala, predio, sala_id)
+        )
+
+
+def excluir_sala_historico(sala_id):
+    with get_db() as con:
+        con.execute("DELETE FROM salas_historico WHERE id=?", (sala_id,))
+
+
+# ── Análise de qualidade do banco de disciplinas ──────────────────────────────
+
+def buscar_duplicatas_disciplinas():
+    """Retorna grupos de disciplinas com mesma turma+disciplina normalizada."""
+    with get_db() as con:
+        rows = con.execute(
+            "SELECT id, turma, disciplina, professor FROM disciplinas_historico"
+        ).fetchall()
+
+    grupos = {}
+    for row_id, turma, disc, prof in rows:
+        chave = (_normalizar_texto(turma), _normalizar_texto(disc))
+        grupos.setdefault(chave, []).append({"id": row_id, "turma": turma, "disciplina": disc, "professor": prof})
+
+    duplicatas = [lista for lista in grupos.values() if len(lista) > 1]
+    duplicatas.sort(key=lambda g: (-len(g), g[0]["turma"]))
+    return duplicatas
+
+
+def buscar_professores_corrompidos():
+    """Retorna disciplinas cujo professor tem caracteres de controle C1 ou artefatos de encoding."""
+    import re as _re
+    # C1 control chars (U+0080–U+009F) nunca aparecem em texto legítimo
+    # Ã seguido de byte de continuação UTF-8 (U+0080–U+00BF) indica duplo encoding
+    _ARTEFATOS = _re.compile(r'[\x80-\x9f]|Ã[\x80-\xbf]')
+    with get_db() as con:
+        rows = con.execute(
+            "SELECT id, turma, disciplina, professor FROM disciplinas_historico WHERE professor != ''"
+        ).fetchall()
+    corrompidos = []
+    for row_id, turma, disc, prof in rows:
+        if _ARTEFATOS.search(prof):
+            corrompidos.append({"id": row_id, "turma": turma, "disciplina": disc, "professor": prof})
+    corrompidos.sort(key=lambda r: r["professor"])
+    return corrompidos

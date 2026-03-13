@@ -178,8 +178,8 @@
         <tbody>
           <tr><td class="c-hora">1º Manhã</td><td>07:30 &ndash; 09:20</td><td class="c-dim">07:00</td></tr>
           <tr><td class="c-hora">2º Manhã</td><td>09:50, 11:30, 11:40</td><td class="c-dim">09:20</td></tr>
-          <tr><td class="c-hora">1º Tarde</td><td>13:00, 13:30</td><td class="c-dim">12:30</td></tr>
-          <tr><td class="c-hora">2º Tarde</td><td>14:00, 15:20, 15:50</td><td class="c-dim">13:30</td></tr>
+          <tr><td class="c-hora">1º Tarde</td><td>13:00, 13:30, 14:00</td><td class="c-dim">12:30</td></tr>
+          <tr><td class="c-hora">2º Tarde</td><td>15:50, 17:40</td><td class="c-dim">15:20</td></tr>
           <tr><td class="c-hora">1º Noite</td><td>18:00, 18:40</td><td class="c-dim">17:30</td></tr>
           <tr><td class="c-hora">2º Noite</td><td>19:00</td><td class="c-dim">18:30</td></tr>
         </tbody>
@@ -190,7 +190,7 @@
         <option>SEGUNDA</option><option>TERCA</option><option>QUARTA</option>
         <option>QUINTA</option><option>SEXTA</option><option>SABADO</option>
       </select>
-      <select id="ger-slot"><option value="">-- turno --</option><option value="manha1">1º Manhã (07:30)</option><option value="manha2">2º Manhã (09:50+)</option><option value="tarde1">1º Tarde (13:00)</option><option value="tarde2">2º Tarde (14:00+)</option><option value="noite1">1º Noite (18:00)</option><option value="noite2">2º Noite (19:00+)</option></select>
+      <select id="ger-slot"><option value="">-- turno --</option><option value="manha1">1º Manhã (07:30)</option><option value="manha2">2º Manhã (09:50+)</option><option value="tarde1">1º Tarde (13:00)</option><option value="tarde2">2º Tarde (15:50+)</option><option value="noite1">1º Noite (18:00)</option><option value="noite2">2º Noite (19:00+)</option></select>
       <input type="text" id="ger-inp" placeholder="buscar disciplina..."
              onkeydown="if(event.key==='Enter')gerBuscar()"/>
       <button class="btn" onclick="gerBuscar()">buscar</button>
@@ -313,8 +313,8 @@
             <tbody>
               <tr><td class="c-hora">1º Manhã</td><td>07:30 &ndash; 09:20</td><td class="c-dim">07:00</td></tr>
               <tr><td class="c-hora">2º Manhã</td><td>09:50, 11:30, 11:40</td><td class="c-dim">09:20</td></tr>
-              <tr><td class="c-hora">1º Tarde</td><td>13:00, 13:30</td><td class="c-dim">12:30</td></tr>
-              <tr><td class="c-hora">2º Tarde</td><td>14:00, 15:20, 15:50</td><td class="c-dim">13:30</td></tr>
+              <tr><td class="c-hora">1º Tarde</td><td>13:00, 13:30, 14:00</td><td class="c-dim">12:30</td></tr>
+              <tr><td class="c-hora">2º Tarde</td><td>15:50, 17:40</td><td class="c-dim">15:20</td></tr>
               <tr><td class="c-hora">1º Noite</td><td>18:00, 18:40</td><td class="c-dim">17:30</td></tr>
               <tr><td class="c-hora">2º Noite</td><td>19:00</td><td class="c-dim">18:30</td></tr>
             </tbody>
@@ -369,13 +369,21 @@
         <span class="menu-key">1</span><span class="menu-label">Banco de disciplinas</span>
         <span class="menu-badge">historico permanente</span>
       </li>
+      <li class="menu-item" onclick="goto('s-adm-salas')">
+        <span class="menu-key">2</span><span class="menu-label">Banco de salas</span>
+        <span class="menu-badge">P1 e P2</span>
+      </li>
       <li class="menu-item" onclick="goto('s-adm-alunos')">
-        <span class="menu-key">2</span><span class="menu-label">Banco de alunos</span>
+        <span class="menu-key">3</span><span class="menu-label">Banco de alunos</span>
         <span class="menu-badge">usuarios cadastrados</span>
       </li>
       <li class="menu-item" onclick="goto('s-adm-email')">
-        <span class="menu-key">3</span><span class="menu-label">Email</span>
+        <span class="menu-key">4</span><span class="menu-label">Email</span>
         <span class="menu-badge">notificacoes e mensagens</span>
+      </li>
+      <li class="menu-item" onclick="goto('s-adm-analise')">
+        <span class="menu-key">5</span><span class="menu-label">Análise</span>
+        <span class="menu-badge">duplicatas e corrompidos</span>
       </li>
     </ul>
   </div>
@@ -394,7 +402,38 @@
       </div>
       <div id="disc-add-msg"></div>
     </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div class="igroup" style="flex:1;margin:0">
+        <span class="iprefix">&#128269;</span>
+        <input type="text" id="adm-disc-search" class="ifield" placeholder="buscar por turma, disciplina ou professor..." oninput="discBuscar()" autocomplete="off"/>
+      </div>
+      <div id="adm-disc-total" style="font-size:11px;color:var(--text-muted);white-space:nowrap"></div>
+    </div>
     <div id="adm-disc-body"><div class="loading">carregando...</div></div>
+  </div>
+
+  <div id="s-adm-salas" class="screen">
+    <button class="btn-back" onclick="goto('s-adm-main')">&larr; voltar</button>
+    <p class="stitle">banco de salas</p>
+    <div style="margin-bottom:14px">
+      <p style="color:var(--text-muted);font-size:12px;margin-bottom:8px">adicionar sala</p>
+      <div class="add-row">
+        <input type="text" id="sala-nome" placeholder="nome da sala (ex: 215)"/>
+        <select id="sala-predio" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:13px">
+          <option value="P1">Prédio 1</option>
+          <option value="P2">Prédio 2</option>
+        </select>
+        <button class="btn success" onclick="salaAdicionar()">+ adicionar</button>
+      </div>
+      <div id="sala-add-msg"></div>
+    </div>
+    <div id="adm-salas-body"><div class="loading">carregando...</div></div>
+  </div>
+
+  <div id="s-adm-analise" class="screen">
+    <button class="btn-back" onclick="goto('s-adm-main')">&larr; voltar</button>
+    <p class="stitle">análise do banco</p>
+    <div id="adm-analise-body"><div class="loading">carregando...</div></div>
   </div>
 
   <div id="s-adm-alunos" class="screen">
@@ -555,7 +594,7 @@
               <span style="color:var(--yellow);font-size:11px">&#9632;</span>
               <span style="color:var(--yellow);font-weight:bold;font-size:13px">Turnos de horario</span>
             </div>
-            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">Cada disciplina cadastrada tem um turno &mdash; 1º Manhã (07:30), 2º Manhã (09:50), 1º Tarde (13:00), 2º Tarde (14:00), 1º Noite (18:00) ou 2º Noite (19:00). O turno e selecionado pelo proprio aluno no momento do cadastro e pode ser alterado a qualquer momento em Configuracoes. Disciplinas sem turno nao geram notificacao.</p>
+            <p style="color:var(--text-dim);font-size:12px;line-height:1.6">Cada disciplina cadastrada tem um turno &mdash; 1º Manhã (07:30), 2º Manhã (09:50), 1º Tarde (13:00), 2º Tarde (15:50), 1º Noite (18:00) ou 2º Noite (19:00). O turno e selecionado pelo proprio aluno no momento do cadastro e pode ser alterado a qualquer momento em Configuracoes. Disciplinas sem turno nao geram notificacao.</p>
           </div>
           <div style="background:var(--bg2);border:1px solid var(--border);padding:12px 14px">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -609,7 +648,7 @@
 <script src="/static/app.js" defer></script>
 
 <footer>
-  &copy; <span id="footer-year"></span> Joshua Azze &amp; IBtech &mdash; Todos os direitos reservados. &nbsp;&middot;&nbsp; <a href="mailto:salas.ibtech@gmail.com" style="color:var(--text-dim);text-decoration:none">salas.ibtech@gmail.com</a>
+  &copy; <span id="footer-year"></span> Joshua Azze &amp; IBtech &mdash; Todos os direitos reservados. &nbsp;&middot;&nbsp; <a href="mailto:suporte@ibsala.com.br" style="color:var(--text-dim);text-decoration:none">suporte@ibsala.com.br</a>
 </footer>
 
 </body>

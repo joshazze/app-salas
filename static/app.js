@@ -6,8 +6,10 @@ function goto(id,_fromPop){
   if(id==='s-todas')loadTodas();
   if(id==='s-ger'){loadGer();loadEmailToggle();}
   if(id==='s-adm-disc')loadAdmDisc();
+  if(id==='s-adm-salas')loadAdmSalas();
   if(id==='s-adm-alunos')loadAdmAlunos();
   if(id==='s-adm-email'){loadAdmAlunosPick();loadTesteAlunos();}
+  if(id==='s-adm-analise')loadAdmAnalise();
   if(!_fromPop)history.pushState({screen:id},'','');
 }
 async function api(url,body){
@@ -15,7 +17,7 @@ async function api(url,body){
   if(body){o.method='POST';o.body=JSON.stringify({...body,session_id:G.sessionId});}
   try{
     const r=await fetch(url,o);
-    if(!r.ok)return{erro:`Erro HTTP ${r.status}`};
+    if(!r.ok){try{return await r.json();}catch(_){return{erro:`Erro HTTP ${r.status}`};}}
     return await r.json();
   }catch(e){
     console.error('api error',url,e);
@@ -23,6 +25,10 @@ async function api(url,body){
   }
 }
 const SLOT_LABELS={manha1:"1º Manhã",manha2:"2º Manhã",tarde1:"1º Tarde",tarde2:"2º Tarde",noite1:"1º Noite",noite2:"2º Noite"};
+const SLOT_HORA={manha1:"07:30",manha2:"09:50",tarde1:"13:00",tarde2:"15:50",noite1:"18:00",noite2:"19:00"};
+const SLOT_INI={manha1:6*60,manha2:9*60+30,tarde1:13*60,tarde2:15*60+30,noite1:18*60,noite2:19*60};
+const SLOT_FIM={manha1:9*60+29,manha2:12*60+59,tarde1:15*60+29,tarde2:17*60+59,noite1:18*60+59,noite2:23*60+59};
+const SLOT_ORDER={manha1:0,manha2:1,tarde1:2,tarde2:3,noite1:4,noite2:5};
 const COL_CLS={Sala:'c-sala',Horario:'c-hora',Turma:'c-turma',Categoria:'c-dim',Professor:'c-dim',Data:'c-hora',Dia:'c-dim'};
 const SKIP_COLS=new Set(['Categoria','Salas','DATA','Sala','Data','Descricao','Responsavel']);
 function normalizeRow(r){
@@ -178,10 +184,7 @@ async function doSalasLivres(){
   const agora=new Date();
   const hm=agora.getHours().toString().padStart(2,'0')+':'+agora.getMinutes().toString().padStart(2,'0');
   horEl.textContent=`consulta em ${hm}`;
-  const SLOT_HORA={manha1:'07:30',manha2:'09:50',tarde1:'13:00',tarde2:'14:00',noite1:'18:00',noite2:'19:00'};
   const agora_min=agora.getHours()*60+agora.getMinutes();
-  const SLOT_INI={manha1:6*60,manha2:9*60+30,tarde1:13*60,tarde2:14*60,noite1:18*60,noite2:19*60};
-  const SLOT_FIM={manha1:9*60+29,manha2:12*60+59,tarde1:13*60+59,tarde2:17*60+59,noite1:18*60+59,noite2:23*60+59};
   let html='';
   const ordem=['manha1','manha2','tarde1','tarde2','noite1','noite2'];
   for(const slot of ordem){
@@ -237,16 +240,14 @@ function doLogout(){
 async function loadHoje(){
   const el=document.getElementById('s-hoje-body');
   document.getElementById('s-hoje-title').textContent=`aulas de hoje -- ${G.statusData?.dia||''}`;
+  if(!G.alunoId){goto('s-main');return;}
   el.innerHTML='<div class="loading">carregando...</div>';
   const d=await api('/api/aulas-hoje',{aluno_id:G.alunoId});
+  if(d.erro){el.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   if(!d.aulas.length){el.innerHTML=`<div class="msg warn">Nenhuma aula encontrada para ${d.dia}. Verifique se suas materias estao cadastradas e com turno definido em Configuracoes.</div>`;return;}
 
   const agora=new Date();
   const agora_min=agora.getHours()*60+agora.getMinutes();
-  const SLOT_INI={manha1:6*60,manha2:9*60+30,tarde1:13*60,tarde2:14*60,noite1:18*60,noite2:19*60};
-  const SLOT_FIM={manha1:9*60+29,manha2:12*60+59,tarde1:13*60+59,tarde2:17*60+59,noite1:18*60+59,noite2:23*60+59};
-  const SLOT_HORA={manha1:'07:30',manha2:'09:50',tarde1:'13:00',tarde2:'14:00',noite1:'18:00',noite2:'19:00'};
-  const SLOT_ORDER={manha1:0,manha2:1,tarde1:2,tarde2:3,noite1:4,noite2:5};
 
   function classify(slot){
     const ini=SLOT_INI[slot],fim=SLOT_FIM[slot];
@@ -323,10 +324,10 @@ async function loadTodas(){
   const el=document.getElementById('s-todas-body');
   el.innerHTML='<div class="loading">carregando...</div>';
   const d=await api('/api/minhas-materias',{aluno_id:G.alunoId});
+  if(d.erro){el.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   if(!d.materias.length){el.innerHTML='<div class="msg warn">Nenhuma materia.</div>';return;}
   const g={};d.materias.forEach(m=>{(g[m.dia]=g[m.dia]||[]).push(m);});
   const DIA_ORDER=['SEGUNDA','TERCA','QUARTA','QUINTA','SEXTA','SABADO'];
-  const SLOT_ORDER={manha1:0,manha2:1,tarde1:2,tarde2:3,noite1:4,noite2:5};
   el.innerHTML=Object.entries(g).sort(([a],[b])=>DIA_ORDER.indexOf(a)-DIA_ORDER.indexOf(b)).map(([dia,mats])=>{
     const sorted=mats.slice().sort((a,b)=>(SLOT_ORDER[a.slot]??9)-(SLOT_ORDER[b.slot]??9));
     return `<div class="cat-block"><div class="cat-label">${dia}</div>
@@ -345,7 +346,7 @@ async function loadGer(){
   const aviso=semSlot.length
     ?`<div class="msg warn" style="margin-bottom:12px">&#9888; ${semSlot.length} disciplina(s) sem turno definido. Selecione o turno de horario de cada uma para receber notificacoes por email.</div>`
     :'';
-  const slotOpts=`<option value="">-- turno --</option><option value="manha1">1º Manhã (07:30)</option><option value="manha2">2º Manhã (09:50+)</option><option value="tarde1">1º Tarde (13:00)</option><option value="tarde2">2º Tarde (14:00+)</option><option value="noite1">1º Noite (18:00)</option><option value="noite2">2º Noite (19:00+)</option>`;
+  const slotOpts=`<option value="">-- turno --</option><option value="manha1">1º Manhã (07:30)</option><option value="manha2">2º Manhã (09:50+)</option><option value="tarde1">1º Tarde (13:00)</option><option value="tarde2">2º Tarde (15:50+)</option><option value="noite1">1º Noite (18:00)</option><option value="noite2">2º Noite (19:00+)</option>`;
   el.innerHTML=aviso+`<table class="tbl"><thead><tr><th>Dia</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th>Turno</th><th></th></tr></thead><tbody>`+
   d.materias.map(m=>`<tr>
     <td class="c-hora">${m.dia}</td><td class="c-turma">${m.turma}</td>
@@ -379,6 +380,7 @@ async function gerBuscar(){
   const el=document.getElementById('ger-pick');
   if(!termo){el.innerHTML='';return;}
   const d=await api('/api/buscar-disciplinas',{termo});
+  if(d.erro){el.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhuma disciplina encontrada. Tente outro termo de busca.</div>';return;}
   el.replaceChildren(mkPickList(d.registros,async row=>{
     const dia=document.getElementById('ger-dia').value;
@@ -451,6 +453,7 @@ async function cadBuscar(){
   if(!termo){el.innerHTML='';return;}
   el.innerHTML='<div class="loading">buscando...</div>';
   const d=await api('/api/buscar-disciplinas',{termo});
+  if(d.erro){el.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
   if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhuma disciplina encontrada. Tente outro termo.</div>';return;}
   el.replaceChildren(mkPickList(d.registros,row=>{
     const dup=G.cadMats.some(m=>m.dia===G._cadDia&&m.disciplina===row.Disciplina&&m.turma===row.Turma);
@@ -533,6 +536,7 @@ function admAtualizarBadge(travado){
 }
 async function admToggleLock(){
   const d=await api('/api/adm/status-trava',admCreds());
+  if(d.erro){alert('Erro ao verificar status: '+d.erro);return;}
   const novo=!d.travado;
   await api('/api/adm/trava',{...admCreds(),travado:novo});
   admAtualizarBadge(novo);
@@ -540,13 +544,32 @@ async function admToggleLock(){
 }
 
 // disciplinas
+let _discCache=[];
 async function loadAdmDisc(){
   const el=document.getElementById('adm-disc-body');
   el.innerHTML='<div class="loading">carregando...</div>';
   const d=await api('/api/adm/disciplinas',admCreds());
-  if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhuma disciplina.</div>';return;}
+  if(d.erro){el.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
+  _discCache=d.registros;
+  const q=document.getElementById('adm-disc-search');
+  if(q)q.value='';
+  _renderDisc(_discCache);
+}
+function discBuscar(){
+  const termo=(document.getElementById('adm-disc-search')?.value||'').trim().toLowerCase();
+  if(!termo){_renderDisc(_discCache);return;}
+  const fil=_discCache.filter(r=>
+    (r.turma+' '+r.disciplina+' '+r.professor).toLowerCase().includes(termo)
+  );
+  _renderDisc(fil);
+}
+function _renderDisc(lista){
+  const el=document.getElementById('adm-disc-body');
+  const tot=document.getElementById('adm-disc-total');
+  if(tot)tot.textContent=`${lista.length} resultado(s)`;
+  if(!lista.length){el.innerHTML='<div class="msg warn">Nenhuma disciplina.</div>';return;}
   let h='<table class="tbl"><thead><tr><th>Código</th><th>Turma</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead><tbody>';
-  d.registros.forEach(r=>{
+  lista.forEach(r=>{
     h+=`<tr>
       <td><span class="c-dim" style="font-size:11px">${r.codigo||''}</span></td>
       <td><input class="tbl-inp" value="${r.turma}" id="dt-${r.id}-turma"/></td>
@@ -584,6 +607,111 @@ async function discExcluir(id){
   if(!confirm('Excluir disciplina?'))return;
   await api('/api/adm/disciplinas/excluir',{...admCreds(),id});
   loadAdmDisc();
+}
+
+// salas
+async function loadAdmSalas(){
+  const el=document.getElementById('adm-salas-body');
+  el.innerHTML='<div class="loading">carregando...</div>';
+  const d=await api('/api/adm/salas',admCreds());
+  if(d.erro){el.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
+  if(!d.registros.length){el.innerHTML='<div class="msg warn">Nenhuma sala.</div>';return;}
+  const p1=d.registros.filter(r=>r.predio==='P1');
+  const p2=d.registros.filter(r=>r.predio==='P2');
+  const _tbl=(lista,predio)=>{
+    if(!lista.length)return'';
+    let h=`<p style="font-weight:600;font-size:13px;margin:16px 0 6px">${predio} <span class="menu-badge">${lista.length} salas</span></p>`;
+    h+='<table class="tbl"><thead><tr><th>Sala</th><th>Prédio</th><th></th></tr></thead><tbody>';
+    lista.forEach(r=>{
+      h+=`<tr>
+        <td><input class="tbl-inp" value="${r.sala}" id="sl-${r.id}-nome"/></td>
+        <td><select class="tbl-inp" id="sl-${r.id}-predio" style="padding:2px 6px">
+          <option value="P1"${r.predio==='P1'?' selected':''}>P1</option>
+          <option value="P2"${r.predio==='P2'?' selected':''}>P2</option>
+        </select></td>
+        <td style="white-space:nowrap">
+          <button class="btn sm" onclick="salaEditar(${r.id})">salvar</button>
+          <button class="btn danger sm" onclick="salaExcluir(${r.id})">rm</button>
+        </td></tr>`;
+    });
+    h+='</tbody></table>';
+    return h;
+  };
+  el.innerHTML=_tbl(p1,'Prédio 1')+_tbl(p2,'Prédio 2');
+}
+async function salaAdicionar(){
+  const sala=document.getElementById('sala-nome').value.trim();
+  const predio=document.getElementById('sala-predio').value;
+  const msg=document.getElementById('sala-add-msg');
+  if(!sala){msg.innerHTML='<div class="msg error">Nome obrigatorio.</div>';return;}
+  await api('/api/adm/salas/adicionar',{...admCreds(),sala,predio});
+  document.getElementById('sala-nome').value='';
+  msg.innerHTML='<div class="msg ok">Adicionada.</div>';
+  loadAdmSalas();
+}
+async function salaEditar(id){
+  const sala=document.getElementById(`sl-${id}-nome`).value;
+  const predio=document.getElementById(`sl-${id}-predio`).value;
+  await api('/api/adm/salas/editar',{...admCreds(),id,sala,predio});
+  loadAdmSalas();
+}
+async function salaExcluir(id){
+  if(!confirm('Excluir sala?'))return;
+  await api('/api/adm/salas/excluir',{...admCreds(),id});
+  loadAdmSalas();
+}
+
+// análise
+async function loadAdmAnalise(){
+  const el=document.getElementById('adm-analise-body');
+  el.innerHTML='<div class="loading">carregando...</div>';
+  const d=await api('/api/adm/disciplinas/analisar',admCreds());
+  if(d.erro){el.innerHTML=`<div class="msg error">${d.erro}</div>`;return;}
+  let h='';
+  // duplicatas
+  h+=`<p style="font-weight:600;font-size:13px;margin:0 0 8px">Duplicatas <span class="menu-badge">${d.duplicatas.length} grupo(s)</span></p>`;
+  if(!d.duplicatas.length){
+    h+='<div class="msg ok" style="margin-bottom:16px">Nenhuma duplicata encontrada.</div>';
+  } else {
+    h+='<table class="tbl" style="margin-bottom:20px"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead><tbody>';
+    d.duplicatas.forEach(grupo=>{
+      grupo.forEach((r,i)=>{
+        h+=`<tr style="${i===0?'border-top:2px solid var(--accent)':''}">
+          <td><input class="tbl-inp" value="${r.turma}" id="dt-${r.id}-turma"/></td>
+          <td><input class="tbl-inp" value="${r.disciplina}" id="dt-${r.id}-disc"/></td>
+          <td><input class="tbl-inp" value="${r.professor}" id="dt-${r.id}-prof"/></td>
+          <td style="white-space:nowrap">
+            <button class="btn sm" onclick="discEditar(${r.id})">salvar</button>
+            <button class="btn danger sm" onclick="discExcluirRecarregar(${r.id})">rm</button>
+          </td></tr>`;
+      });
+    });
+    h+='</tbody></table>';
+  }
+  // corrompidos
+  h+=`<p style="font-weight:600;font-size:13px;margin:0 0 8px">Professores com encoding corrompido <span class="menu-badge">${d.corrompidos.length}</span></p>`;
+  if(!d.corrompidos.length){
+    h+='<div class="msg ok">Nenhum nome corrompido encontrado.</div>';
+  } else {
+    h+='<table class="tbl"><thead><tr><th>Turma</th><th>Disciplina</th><th>Professor</th><th></th></tr></thead><tbody>';
+    d.corrompidos.forEach(r=>{
+      h+=`<tr>
+        <td><input class="tbl-inp" value="${r.turma}" id="dt-${r.id}-turma"/></td>
+        <td><input class="tbl-inp" value="${r.disciplina}" id="dt-${r.id}-disc"/></td>
+        <td><input class="tbl-inp" value="${r.professor}" id="dt-${r.id}-prof"/></td>
+        <td style="white-space:nowrap">
+          <button class="btn sm" onclick="discEditar(${r.id})">salvar</button>
+          <button class="btn danger sm" onclick="discExcluirRecarregar(${r.id})">rm</button>
+        </td></tr>`;
+    });
+    h+='</tbody></table>';
+  }
+  el.innerHTML=h;
+}
+async function discExcluirRecarregar(id){
+  if(!confirm('Excluir disciplina?'))return;
+  await api('/api/adm/disciplinas/excluir',{...admCreds(),id});
+  loadAdmAnalise();
 }
 
 // alunos

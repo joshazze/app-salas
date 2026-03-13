@@ -47,8 +47,10 @@ def _salvar_status(slot, enviados, erros, erro_msg=None):
         "erros": erros,
         "erro_msg": erro_msg,
     }
-    with open(STATUS_FILE, "w") as f:
+    tmp = STATUS_FILE + ".tmp"
+    with open(tmp, "w") as f:
         json.dump(status, f)
+    os.replace(tmp, STATUS_FILE)
 
 
 def rotina_atualizacao(slot=None):
@@ -56,10 +58,8 @@ def rotina_atualizacao(slot=None):
     print(f"\n[scheduler] Iniciando atualizacao (slot: {label})...")
     enviados, erros, erro_msg = 0, 0, None
     try:
-        hoje       = datetime.now().strftime("%Y-%m-%d")
-        dia_semana = datetime.now().strftime("%A").upper()
-        dia_pt     = vp.DIAS_PT.get(dia_semana, dia_semana)
-        csv_hoje   = os.path.join(vp.PASTA_CACHE, f"mapa_salas_{hoje}.csv")
+        hoje   = vp._hoje()
+        dia_pt = vp._dia_pt()
         df_bruto = vp.buscar_planilha_remota()
         df = vp.parsear_e_organizar(df_bruto)
         vp.salvar_csv_incremental(df)
@@ -199,13 +199,13 @@ if __name__ == "__main__":
     # manha1 (07:30) -> dispara 07:00
     # manha2 (09:50) -> dispara 09:20
     # tarde1 (13:00) -> dispara 12:30
-    # tarde2 (14:00) -> dispara 13:30
+    # tarde2 (15:50) -> dispara 15:20
     # noite1 (18:00) -> dispara 17:30
     # noite2 (19:00) -> dispara 18:30
     scheduler.add_job(rotina_atualizacao, "cron", hour=7,  minute=0,  kwargs={"slot": "manha1"})
     scheduler.add_job(rotina_atualizacao, "cron", hour=9,  minute=20, kwargs={"slot": "manha2"})
     scheduler.add_job(rotina_atualizacao, "cron", hour=12, minute=30, kwargs={"slot": "tarde1"})
-    scheduler.add_job(rotina_atualizacao, "cron", hour=13, minute=30, kwargs={"slot": "tarde2"})
+    scheduler.add_job(rotina_atualizacao, "cron", hour=15, minute=20, kwargs={"slot": "tarde2"})
     scheduler.add_job(rotina_atualizacao, "cron", hour=17, minute=30, kwargs={"slot": "noite1"})
     scheduler.add_job(rotina_atualizacao, "cron", hour=18, minute=30, kwargs={"slot": "noite2"})
 
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     scheduler.add_job(rotina_monitoramento, "cron", hour=7,  minute=40, kwargs={"slot": "manha1"})
     scheduler.add_job(rotina_monitoramento, "cron", hour=10, minute=0,  kwargs={"slot": "manha2"})
     scheduler.add_job(rotina_monitoramento, "cron", hour=13, minute=10, kwargs={"slot": "tarde1"})
-    scheduler.add_job(rotina_monitoramento, "cron", hour=14, minute=10, kwargs={"slot": "tarde2"})
+    scheduler.add_job(rotina_monitoramento, "cron", hour=16, minute=0,  kwargs={"slot": "tarde2"})
     scheduler.add_job(rotina_monitoramento, "cron", hour=18, minute=10, kwargs={"slot": "noite1"})
     scheduler.add_job(rotina_monitoramento, "cron", hour=19, minute=10, kwargs={"slot": "noite2"})
 

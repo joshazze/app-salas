@@ -3,6 +3,7 @@ Servidor Flask — API para o Mapa de Salas IBMEC
 """
 
 import os
+import re
 import sqlite3
 import threading
 import json
@@ -64,31 +65,26 @@ _df_lock = threading.Lock()
 
 def get_df():
     global _df, _df_data
-    hoje = vp._hoje()
-    if _df is not None and _df_data == hoje:
-        return _df
     with _df_lock:
-        if _df is None or _df_data != hoje:
-            _df_data = hoje
-            if vp.csv_hoje_existe():
-                _df = vp.carregar_do_cache()
-            else:
-                df_bruto = vp.buscar_planilha_remota()
-                _df = vp.parsear_e_organizar(df_bruto)
-                vp.salvar_csv(_df)
+        hoje = vp._hoje()
+        if _df is not None and _df_data == hoje:
+            return _df
+        _df_data = hoje
+        if vp.csv_hoje_existe():
+            _df = vp.carregar_do_cache()
+        else:
+            df_bruto = vp.buscar_planilha_remota()
+            _df = vp.parsear_e_organizar(df_bruto)
+            vp.salvar_csv(_df)
     return _df
 
-
-def _sem_acento(s):
-    import unicodedata
-    return unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode('ascii').upper()
 
 def get_df_hoje():
     """Retorna o dataframe filtrado apenas com registros do dia atual."""
     df = get_df()
     dia_hoje = vp._dia_pt()
     if "Dia" in df.columns:
-        return df[df["Dia"].apply(_sem_acento) == _sem_acento(dia_hoje)].reset_index(drop=True)
+        return df[df["Dia"].apply(vp._normalizar_texto) == vp._normalizar_texto(dia_hoje)].reset_index(drop=True)
     return df
 
 
@@ -159,7 +155,7 @@ def salas_livres():
 
 
 def _sid():
-    return (request.json or {}).get("session_id") or request.headers.get("X-Session-Id")
+    return (request.get_json(silent=True) or {}).get("session_id") or request.headers.get("X-Session-Id")
 
 
 @app.route("/api/buscar", methods=["POST"])
@@ -240,18 +236,20 @@ def minhas_materias():
 @app.route("/api/cadastrar", methods=["POST"])
 def cadastrar():
     data     = request.json or {}
-    username = data.get("username", "").strip()
-    email    = data.get("email", "").strip()
+    username = data.get("username", "").strip().lower()
+    email    = data.get("email", "").strip().lower()
     materias = data.get("materias", [])
 
     if not username:
         return jsonify({"erro": "Username vazio"}), 400
     if not email:
         return jsonify({"erro": "Email obrigatorio"}), 400
+    if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return jsonify({"erro": "Email invalido"}), 400
     if vp.buscar_aluno(username):
-        return jsonify({"erro": f"Username '{username}' ja existe"}), 409
+        return jsonify({"erro": "Username indisponivel"}), 409
     if vp.buscar_aluno_por_email(email):
-        return jsonify({"erro": f"Email '{email}' ja esta cadastrado"}), 409
+        return jsonify({"erro": "Email ja cadastrado"}), 409
 
     receber_email = data.get("receber_email", True)
     aluno_id = vp.criar_aluno(username, email, receber_email=receber_email)
@@ -282,6 +280,8 @@ def adicionar_materia():
     slot       = data.get("slot") or None
     if not all([aluno_id, dia, turma, disciplina, professor]):
         return jsonify({"erro": "Campos obrigatorios ausentes"}), 400
+    if slot is not None and slot not in vp.SLOTS:
+        return jsonify({"erro": "Slot invalido"}), 400
     vp.salvar_materia(aluno_id, dia, turma, disciplina, professor, slot)
     return jsonify({"ok": True})
 
@@ -294,6 +294,8 @@ def atualizar_slot():
     slot       = data.get("slot") or None
     if not aluno_id or not materia_id:
         return jsonify({"erro": "Campos obrigatorios ausentes"}), 400
+    if slot is not None and slot not in vp.SLOTS:
+        return jsonify({"erro": "Slot invalido"}), 400
     with vp.get_db() as con:
         rows = con.execute(
             "UPDATE materias SET slot=? WHERE id=? AND aluno_id=?",
@@ -532,6 +534,8 @@ def adm_email_custom():
     mensagem      = data.get("mensagem", "").strip()
     if not assunto or not mensagem or not destinatarios:
         return jsonify({"erro": "Campos incompletos"}), 400
+    if len(mensagem) > 5000:
+        return jsonify({"erro": "Mensagem muito longa (max 5000 caracteres)"}), 400
 
     mensagem_safe = html_lib.escape(mensagem).replace("\n", "<br>")
     content = (
@@ -635,10 +639,11 @@ def adm_email_teste():
         username = r[0] if r else "usuario"
         aluno_id = aluno_id_param
     else:
-        aluno = vp.buscar_aluno("josh")
-        if not aluno:
-            return jsonify({"erro": "Usuario josh nao encontrado"}), 404
-        aluno_id, username, _ = aluno
+        with vp.get_db() as con:
+            _r = con.execute("SELECT id, username FROM alunos WHERE bloqueado=0 LIMIT 1").fetchone()
+        if not _r:
+            return jsonify({"erro": "Nenhum usuario disponivel para teste"}), 404
+        aluno_id, username = _r
         row = vp.buscar_aluno_por_id(aluno_id)
         if not row:
             return jsonify({"erro": "Dados do usuario nao encontrados"}), 404
@@ -697,6 +702,66 @@ def adm_email_teste():
         return jsonify({"ok": True, "enviado_para": email})
     except Exception as e:
         return jsonify({"erro": str(e)}), 500
+
+
+# ── Salas ─────────────────────────────────────────────────────────────────────
+
+@app.route("/api/adm/salas", methods=["POST"])
+def adm_salas():
+    data = request.json or {}
+    if not check_adm(data):
+        return jsonify({"erro": "Nao autorizado"}), 401
+    return jsonify({"registros": vp.listar_salas_historico()})
+
+
+@app.route("/api/adm/salas/adicionar", methods=["POST"])
+def adm_sala_adicionar():
+    data = request.json or {}
+    if not check_adm(data):
+        return jsonify({"erro": "Nao autorizado"}), 401
+    sala   = data.get("sala", "").strip()
+    predio = data.get("predio", "P1").strip()
+    if not sala:
+        return jsonify({"erro": "Nome da sala obrigatorio"}), 400
+    vp.adicionar_sala_historico(sala, predio)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/adm/salas/editar", methods=["POST"])
+def adm_sala_editar():
+    data = request.json or {}
+    if not check_adm(data):
+        return jsonify({"erro": "Nao autorizado"}), 401
+    sala_id = data.get("id")
+    sala    = data.get("sala", "").strip()
+    predio  = data.get("predio", "P1").strip()
+    if not sala_id or not sala:
+        return jsonify({"erro": "Campos obrigatorios ausentes"}), 400
+    vp.editar_sala_historico(sala_id, sala, predio)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/adm/salas/excluir", methods=["POST"])
+def adm_sala_excluir():
+    data = request.json or {}
+    if not check_adm(data):
+        return jsonify({"erro": "Nao autorizado"}), 401
+    sala_id = data.get("id")
+    if not sala_id:
+        return jsonify({"erro": "id ausente"}), 400
+    vp.excluir_sala_historico(sala_id)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/adm/disciplinas/analisar", methods=["POST"])
+def adm_disc_analisar():
+    data = request.json or {}
+    if not check_adm(data):
+        return jsonify({"erro": "Nao autorizado"}), 401
+    return jsonify({
+        "duplicatas":   vp.buscar_duplicatas_disciplinas(),
+        "corrompidos":  vp.buscar_professores_corrompidos(),
+    })
 
 
 # ── Init ──────────────────────────────────────────────────────────────────────
